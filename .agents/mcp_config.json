@@ -1,0 +1,44 @@
+{
+  "mcpServers": {
+    "chrome-devtools": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "chrome-devtools-mcp@latest",
+        "--executablePath=/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+      ]
+    },
+    "playwright": {
+    "command": "npx",
+    "args": [
+      "-y",
+      "@playwright/mcp@latest",
+      "--executable-path=/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+    ]
+  },
+    "context7": {
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp"]
+    },
+    "shadcn": {
+      "command": "npx",
+      "args": ["shadcn@latest", "mcp"]
+    },
+    "figma": {
+      "command": "npx",
+      "args": ["-y", "figma-developer-mcp"],
+      "env": {
+        "FIGMA_API_KEY": "${FIGMA_API_KEY}"
+      }
+    },
+    "threejs": {
+      "command": "npx",
+      "args": ["-y", "threejs-devtools-mcp"]
+    },
+    "hyper3d": {
+      "serverUrl": "https://api.hyper3d.com/api/mcp",
+      "type": "http",
+      "url": "https://api.hyper3d.com/api/mcp"
+    }
+  }
+}

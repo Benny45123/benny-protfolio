@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Benny 3D Model Inspector | Three.js</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+    body {
+      background: #08090c;
+      color: #e4e7eb;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      overflow: hidden;
+      width: 100vw;
+      height: 100vh;
+    }
+    #canvas-container {
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+    /* Loading overlay */
+    #loading-overlay {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at center, #11141c 0%, #06070a 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      transition: opacity 0.6s ease, visibility 0.6s;
+    }
+    #loading-overlay.hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+    .spinner-ring {
+      width: 64px;
+      height: 64px;
+      border: 3px solid rgba(255, 255, 255, 0.08);
+      border-top-color: #3b82f6;
+      border-right-color: #60a5fa;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 24px;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .loading-title {
+      font-size: 18px;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      margin-bottom: 8px;
+      color: #f3f4f6;
+    }
+    .loading-subtext {
+      font-size: 13px;
+      color: #9ca3af;
+      margin-bottom: 20px;
+    }
+    .progress-bar-container {
+      width: 320px;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 999px;
+      overflow: hidden;
+      margin-bottom: 12px;
+    }
+    .progress-bar {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #3b82f6, #60a5fa);
+      transition: width 0.2s ease;
+      box-shadow: 0 0 12px rgba(59, 130, 246, 0.5);
+    }
+    .progress-status {
+      font-size: 12px;
+      color: #9ca3af;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+
+    /* Header */
+    .header-bar {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: rgba(15, 18, 25, 0.75);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      padding: 10px 18px;
+    }
+    .brand-dot {
+      width: 10px;
+      height: 10px;
+      background: #10b981;
+      border-radius: 50%;
+      box-shadow: 0 0 8px #10b981;
+    }
+    .header-info h1 {
+      font-size: 14px;
+      font-weight: 600;
+      color: #f9fafb;
+      margin: 0;
+      letter-spacing: 0.02em;
+    }
+    .header-info p {
+      font-size: 11px;
+      color: #9ca3af;
+      margin: 0;
+    }
+
+    /* Floating control panel */
+    .controls-panel {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      width: 290px;
+      background: rgba(15, 18, 25, 0.85);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+      padding: 18px;
+      z-index: 10;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+    }
+    .panel-section-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #9ca3af;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .btn-group {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 14px;
+    }
+    .btn {
+      flex: 1;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: #d1d5db;
+      font-size: 12px;
+      font-weight: 500;
+      padding: 8px 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      text-align: center;
+    }
+    .btn:hover {
+      background: rgba(255, 255, 255, 0.12);
+      color: #fff;
+    }
+    .btn.active {
+      background: #2563eb;
+      border-color: #3b82f6;
+      color: #fff;
+      box-shadow: 0 0 12px rgba(37, 99, 235, 0.4);
+    }
+    .select-dropdown {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #f3f4f6;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      margin-bottom: 14px;
+      outline: none;
+      cursor: pointer;
+    }
+    .slider-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+      font-size: 12px;
+      color: #9ca3af;
+    }
+    .slider-row input[type="range"] {
+      width: 130px;
+      accent-color: #3b82f6;
+      cursor: pointer;
+    }
+    .camera-preset-btn {
+      flex: 1;
+      font-size: 11px;
+      padding: 6px 8px;
+    }
+
+    /* Stats panel */
+    .stats-panel {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      background: rgba(15, 18, 25, 0.8);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      padding: 12px 18px;
+      z-index: 10;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 11px;
+      color: #9ca3af;
+      line-height: 1.6;
+    }
+    .stats-val {
+      color: #60a5fa;
+      font-weight: 600;
+    }
+
+    /* Instructions toast */
+    .instructions-hint {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      background: rgba(15, 18, 25, 0.7);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 10px;
+      padding: 8px 14px;
+      font-size: 11px;
+      color: #6b7280;
+      z-index: 10;
+      pointer-events: none;
+    }
+  </style>
+
+  <!-- Import maps polyfill & Three.js modules -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <div id="canvas-container"></div>
+
+  <!-- Loading State -->
+  <div id="loading-overlay">
+    <div class="spinner-ring"></div>
+    <div class="loading-title">LOADING BENNY 3D MODEL</div>
+    <div class="loading-subtext">Fetching 201 MB geometry &amp; 4K Diffuse + Roughness textures</div>
+    <div class="progress-bar-container">
+      <div id="progress-bar" class="progress-bar"></div>
+    </div>
+    <div id="progress-status" class="progress-status">Connecting... 0%</div>
+  </div>
+
+  <!-- Top Info Header -->
+  <div class="header-bar">
+    <div class="brand-dot" style="background: #00f2fe; box-shadow: 0 0 10px #00f2fe;"></div>
+    <div class="header-info">
+      <h1>Character Full Body</h1>
+      <p>Three.js WebGL Inspector &bull; Textured &bull; Neon Cyberpunk Mode</p>
+    </div>
+  </div>
+
+  <!-- Stats Overlay -->
+  <div class="stats-panel" id="stats-panel">
+    <div>Model: <span class="stats-val" id="stat-model">Character Full Body (39 MB GLB)</span></div>
+    <div>Polygons: <span class="stats-val" id="stat-polys">Full Body Mesh</span></div>
+    <div>Vertices: <span class="stats-val" id="stat-verts">Rigged Character</span></div>
+    <div>Render: <span class="stats-val">Textured &bull; Neon Lighting</span></div>
+    <div>Framerate: <span class="stats-val" id="stat-fps">-- FPS</span></div>
+  </div>
+
+  <!-- Interactive Controls Panel -->
+  <div class="controls-panel">
+    <div class="panel-section-title">Model Asset</div>
+    <select id="model-select" class="select-dropdown">
+      <option value="obj" selected>Benny-3D-Model-Profile (201MB OBJ + 4K)</option>
+      <option value="glb">Character Full Body (39MB GLB)</option>
+    </select>
+
+    <div class="panel-section-title">Render Mode</div>
+    <div class="btn-group">
+      <button class="btn active" id="btn-textured" onclick="setRenderMode('textured')">Textured</button>
+      <button class="btn" id="btn-clay" onclick="setRenderMode('clay')">Studio Clay</button>
+      <button class="btn" id="btn-wireframe" onclick="setRenderMode('wireframe')">Wireframe</button>
+    </div>
+
+    <div class="panel-section-title">Lighting Setup</div>
+    <div class="btn-group">
+      <button class="btn active" id="btn-light-studio" onclick="setLighting('studio')">Studio</button>
+      <button class="btn" id="btn-light-cyber" onclick="setLighting('cyber')">Neon</button>
+      <button class="btn" id="btn-light-dramatic" onclick="setLighting('dramatic')">Dramatic</button>
+    </div>
+
+    <div class="panel-section-title">Camera Focus</div>
+    <div class="btn-group">
+      <button class="btn camera-preset-btn active" id="btn-cam-full" onclick="focusCamera('full')">Full Body</button>
+      <button class="btn camera-preset-btn" id="btn-cam-face" onclick="focusCamera('face')">Head/Face</button>
+      <button class="btn camera-preset-btn" id="btn-cam-torso" onclick="focusCamera('torso')">Torso</button>
+    </div>
+
+    <div class="panel-section-title">Adjustments</div>
+    <div class="slider-row">
+      <span>Auto-Rotate</span>
+      <input type="checkbox" id="toggle-rotate" checked onchange="toggleAutoRotate(this.checked)">
+    </div>
+    <div class="slider-row">
+      <span>Key Light</span>
+      <input type="range" id="light-intensity" min="0.2" max="3.0" step="0.1" value="1.4" oninput="updateLightIntensity(this.value)">
+    </div>
+    <div class="slider-row">
+      <span>Roughness</span>
+      <input type="range" id="material-roughness" min="0.0" max="1.0" step="0.05" value="0.65" oninput="updateRoughness(this.value)">
+    </div>
+    <div class="slider-row">
+      <span>Ambient Fill</span>
+      <input type="range" id="ambient-intensity" min="0.1" max="1.5" step="0.05" value="0.5" oninput="updateAmbientIntensity(this.value)">
+    </div>
+    <div class="slider-row">
+      <span>Flip Texture Y</span>
+      <input type="checkbox" id="toggle-flip-y" checked onchange="toggleFlipY(this.checked)">
+    </div>
+    <div class="slider-row">
+      <span>Normal Details</span>
+      <input type="checkbox" id="toggle-normal-map" checked onchange="toggleNormalMap(this.checked)">
+    </div>
+
+    <div style="margin-top: 10px;">
+      <button class="btn" style="width: 100%;" onclick="resetCamera()">Reset Camera</button>
+    </div>
+  </div>
+
+  <div class="instructions-hint">
+    Left Click: Rotate &bull; Right Click: Pan &bull; Scroll: Zoom
+  </div>
+
+  <!-- Main Three.js Application -->
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
+    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+    let scene, camera, renderer, controls;
+    let currentModelGroup = null;
+    let cachedObjModel = null;
+    let cachedGlbModel = null;
+    let pbrMaterial = null;
+    let clayMaterial = null;
+    let wireframeMaterial = null;
+    let currentRenderMode = 'textured';
+    let dirLightKey, dirLightFill, dirLightRim, ambientLight;
+    let textures = {};
+
+    // Performance FPS tracker
+    let frameCount = 0;
+    let lastFpsUpdate = performance.now();
+    const fpsElem = document.getElementById('stat-fps');
+
+    const progressBar = document.getElementById('progress-bar');
+    const progressStatus = document.getElementById('progress-status');
+    const loadingOverlay = document.getElementById('loading-overlay');
+
+    function initScene() {
+      const container = document.getElementById('canvas-container');
+
+      // 1. Scene
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x0a0c10);
+      scene.fog = new THREE.FogExp2(0x0a0c10, 0.08);
+
+      // 2. Camera (framing 1.9m tall human model)
+      camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.05, 50);
+      camera.position.set(0, 0.2, 2.6);
+
+      // 3. Renderer
+      renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.1;
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      container.appendChild(renderer.domElement);
+
+      // 4. Controls
+      controls = new OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.06;
+      controls.minDistance = 0.3;
+      controls.maxDistance = 6.0;
+      controls.target.set(0, 0.05, 0);
+      controls.autoRotate = true;
+      controls.autoRotateSpeed = 0.8;
+
+      // 5. Lighting Setup
+      ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+      scene.add(ambientLight);
+
+      // Key light
+      dirLightKey = new THREE.DirectionalLight(0xfff5ea, 1.4);
+      dirLightKey.position.set(2, 3, 2.5);
+      dirLightKey.castShadow = true;
+      dirLightKey.shadow.mapSize.width = 2048;
+      dirLightKey.shadow.mapSize.height = 2048;
+      dirLightKey.shadow.bias = -0.0005;
+      scene.add(dirLightKey);
+
+      // Fill light (subtle cool blue fill)
+      dirLightFill = new THREE.DirectionalLight(0x8bc34a, 0.6);
+      dirLightFill.color.setHex(0x90b4ce);
+      dirLightFill.position.set(-2.5, 1.5, 1.5);
+      scene.add(dirLightFill);
+
+      // Rim light (back highlight)
+      dirLightRim = new THREE.DirectionalLight(0x38bdf8, 1.2);
+      dirLightRim.position.set(0, 2.5, -2.5);
+      scene.add(dirLightRim);
+
+      // 6. Ground Grid & Pedestal
+      const gridHelper = new THREE.GridHelper(10, 40, 0x3b82f6, 0x1f2937);
+      gridHelper.position.y = -0.95;
+      gridHelper.material.opacity = 0.35;
+      gridHelper.material.transparent = true;
+      scene.add(gridHelper);
+
+      // Subtle shadow catcher circle
+      const shadowGeo = new THREE.CircleGeometry(1.2, 64);
+      const shadowMat = new THREE.MeshBasicMaterial({
+        color: 0x030406,
+        transparent: true,
+        opacity: 0.75
+      });
+      const shadowMesh = new THREE.Mesh(shadowGeo, shadowMat);
+      shadowMesh.rotation.x = -Math.PI / 2;
+      shadowMesh.position.y = -0.948;
+      scene.add(shadowMesh);
+
+      // 7. Event listeners
+      window.addEventListener('resize', onWindowResize);
+      document.getElementById('model-select').addEventListener('change', onModelSelectChange);
+
+      // 8. Animation Loop
+      animate();
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+      controls.update();
+      renderer.render(scene, camera);
+
+      // FPS tracking
+      frameCount++;
+      const now = performance.now();
+      if (now - lastFpsUpdate >= 500) {
+        const fps = Math.round((frameCount * 1000) / (now - lastFpsUpdate));
+        fpsElem.textContent = `${fps} FPS`;
+        frameCount = 0;
+        lastFpsUpdate = now;
+      }
+    }
+
+    function onWindowResize() {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    // Load textures and OBJ model
+    async function loadTexturesAndObjModel() {
+      if (cachedObjModel) {
+        if (currentModelGroup) scene.remove(currentModelGroup);
+        currentModelGroup = cachedObjModel;
+        scene.add(currentModelGroup);
+        fitModelToCamera(currentModelGroup);
+        focusCamera('full');
+        document.getElementById('stat-model').textContent = 'base.obj (201 MB)';
+        document.getElementById('stat-polys').textContent = '2,000,000 faces';
+        document.getElementById('stat-verts').textContent = '999,986 vertices';
+        document.getElementById('model-select').value = 'obj';
+        showLoading(false);
+        return;
+      }
+
+      showLoading(true, "Loading 4K Textures & 201MB OBJ...", "Initializing loaders...");
+      const textureLoader = new THREE.TextureLoader();
+      const basePath = '/Benny-3D-Model-Profile/';
+
+      try {
+        progressStatus.textContent = "Loading 4K Diffuse & Roughness maps...";
+        progressBar.style.width = "20%";
+
+        const loadTex = (url, isColor = false) => {
+          return new Promise((resolve) => {
+            textureLoader.load(url, (tex) => {
+              if (isColor) tex.colorSpace = THREE.SRGBColorSpace;
+              // Crucial fix: Standard Blender OBJ exports require flipY = true
+              tex.flipY = true;
+              tex.generateMipmaps = true;
+              tex.minFilter = THREE.LinearMipmapLinearFilter;
+              tex.magFilter = THREE.LinearFilter;
+              tex.needsUpdate = true;
+              resolve(tex);
+            }, undefined, () => resolve(null));
+          });
+        };
+
+        const [diffuse, roughness, normal] = await Promise.all([
+          loadTex(basePath + 'texture_diffuse.png', true),
+          loadTex(basePath + 'texture_roughness.png', false),
+          loadTex(basePath + 'texture_normal.png', false)
+        ]);
+
+        textures = { diffuse, roughness, normal };
+
+        // Create Materials using diffuse, roughness, and high-detail normal map
+        pbrMaterial = new THREE.MeshStandardMaterial({
+          map: diffuse || null,
+          normalMap: normal || null,
+          normalScale: new THREE.Vector2(1.0, 1.0),
+          roughnessMap: roughness || null,
+          roughness: 0.65,
+          metalness: 0.0,
+          side: THREE.FrontSide
+        });
+
+        clayMaterial = new THREE.MeshStandardMaterial({
+          color: 0xd4d4d8,
+          roughness: 0.5,
+          metalness: 0.1,
+          side: THREE.FrontSide
+        });
+
+        wireframeMaterial = new THREE.MeshBasicMaterial({
+          color: 0x38bdf8,
+          wireframe: true
+        });
+
+        // Load 201MB OBJ
+        const objLoader = new OBJLoader();
+        progressStatus.textContent = "Streaming base.obj (201 MB)...";
+
+        objLoader.load(
+          basePath + 'base.obj',
+          (obj) => {
+            progressStatus.textContent = "Configuring 2M polygons into GPU buffers...";
+            progressBar.style.width = "95%";
+
+            setTimeout(() => {
+              if (currentModelGroup) scene.remove(currentModelGroup);
+
+              obj.traverse((child) => {
+                if (child.isMesh) {
+                  child.castShadow = true;
+                  child.receiveShadow = true;
+                  child.userData.originalMaterial = pbrMaterial;
+                  child.material = pbrMaterial;
+                  // Preserve Blender's original smooth normals; don't wipe them out
+                  if (!child.geometry.attributes.normal) {
+                    child.geometry.computeVertexNormals();
+                  }
+                }
+              });
+
+              cachedObjModel = obj;
+              currentModelGroup = obj;
+              scene.add(currentModelGroup);
+
+              fitModelToCamera(currentModelGroup);
+              focusCamera('full');
+
+              document.getElementById('stat-model').textContent = 'base.obj (201 MB)';
+              document.getElementById('stat-polys').textContent = '2,000,000 faces';
+              document.getElementById('stat-verts').textContent = '999,986 vertices';
+              document.getElementById('model-select').value = 'obj';
+
+              showLoading(false);
+            }, 100);
+          },
+          (xhr) => {
+            if (xhr.lengthComputable && xhr.total > 0) {
+              const mbLoaded = (xhr.loaded / 1024 / 1024).toFixed(1);
+              const mbTotal = (xhr.total / 1024 / 1024).toFixed(1);
+              const pct = Math.round((xhr.loaded / xhr.total) * 100);
+              progressBar.style.width = `${Math.min(pct, 90)}%`;
+              progressStatus.textContent = `Downloading: ${mbLoaded} MB / ${mbTotal} MB (${pct}%)`;
+            } else {
+              const mbLoaded = (xhr.loaded / 1024 / 1024).toFixed(1);
+              progressStatus.textContent = `Streaming: ${mbLoaded} MB downloaded...`;
+            }
+          },
+          (err) => {
+            console.error('Error loading OBJ:', err);
+            progressStatus.textContent = "Failed to load base.obj: " + (err.message || 'Check console');
+          }
+        );
+      } catch (err) {
+        console.error('Setup error:', err);
+      }
+    }
+
+    // Load GLB model option
+    function loadGlbModel() {
+      if (cachedGlbModel) {
+        if (currentModelGroup) scene.remove(currentModelGroup);
+        currentModelGroup = cachedGlbModel;
+        scene.add(currentModelGroup);
+        fitModelToCamera(currentModelGroup);
+        focusCamera('full');
+        document.getElementById('stat-model').textContent = 'Character Full Body (39 MB GLB)';
+        document.getElementById('stat-polys').textContent = 'Full Body Mesh';
+        document.getElementById('stat-verts').textContent = 'Rigged Character';
+        document.getElementById('model-select').value = 'glb';
+        showLoading(false);
+        return;
+      }
+
+      showLoading(true, "Loading Benny Full Body Character...", "Streaming 39MB GLB...");
+      const gltfLoader = new GLTFLoader();
+      gltfLoader.load(
+        '/assets/character/man_in_white_shirt_and_pants.glb',
+        (gltf) => {
+          if (currentModelGroup) scene.remove(currentModelGroup);
+          currentModelGroup = gltf.scene;
+
+          currentModelGroup.traverse((child) => {
+            if (child.isMesh) {
+              child.castShadow = true;
+              child.receiveShadow = true;
+              if (!child.userData.originalMaterial) {
+                child.userData.originalMaterial = child.material;
+              }
+            }
+          });
+
+          cachedGlbModel = currentModelGroup;
+          scene.add(currentModelGroup);
+          fitModelToCamera(currentModelGroup);
+          focusCamera('full');
+
+          document.getElementById('stat-model').textContent = 'Character Full Body (39 MB GLB)';
+          document.getElementById('stat-polys').textContent = 'Full Body Mesh';
+          document.getElementById('stat-verts').textContent = 'Rigged Character';
+
+          showLoading(false);
+        },
+        (xhr) => {
+          if (xhr.lengthComputable && xhr.total > 0) {
+            const pct = Math.round((xhr.loaded / xhr.total) * 100);
+            progressBar.style.width = `${pct}%`;
+            progressStatus.textContent = `Downloading Character: ${pct}%`;
+          } else {
+            progressStatus.textContent = "Loading Character Full Body...";
+          }
+        },
+        (err) => {
+          console.error(err);
+          progressStatus.textContent = "Error loading GLB character.";
+        }
+      );
+    }
+
+    function fitModelToCamera(object) {
+      const box = new THREE.Box3().setFromObject(object);
+      const center = box.getCenter(new THREE.Vector3());
+      const size = box.getSize(new THREE.Vector3());
+
+      controls.target.copy(center);
+      camera.position.set(center.x, center.y + 0.1, center.z + Math.max(size.y * 1.3, 2.2));
+      camera.lookAt(center);
+      controls.update();
+    }
+
+    function showLoading(show, title = "", status = "") {
+      if (show) {
+        loadingOverlay.classList.remove('hidden');
+        if (title) document.querySelector('.loading-title').textContent = title;
+        if (status) progressStatus.textContent = status;
+        progressBar.style.width = "0%";
+      } else {
+        progressBar.style.width = "100%";
+        setTimeout(() => {
+          loadingOverlay.classList.add('hidden');
+        }, 300);
+      }
+    }
+
+    function onModelSelectChange(e) {
+      if (e.target.value === 'obj') {
+        loadTexturesAndObjModel();
+      } else {
+        loadGlbModel();
+      }
+    }
+
+    // Exposed UI Functions
+    function setRenderMode(mode) {
+      currentRenderMode = mode;
+      ['textured', 'clay', 'wireframe'].forEach((m) => {
+        const btn = document.getElementById(`btn-${m}`);
+        if (btn) btn.classList.toggle('active', m === mode);
+      });
+
+      if (!currentModelGroup) return;
+
+      let targetMat = pbrMaterial;
+      if (mode === 'clay') targetMat = clayMaterial;
+      if (mode === 'wireframe') targetMat = wireframeMaterial;
+
+      currentModelGroup.traverse((child) => {
+        if (child.isMesh) {
+          if (mode === 'textured') {
+            child.material = child.userData.originalMaterial || pbrMaterial;
+          } else {
+            child.material = targetMat;
+          }
+        }
+      });
+    }
+    window.setRenderMode = setRenderMode;
+
+    function setLighting(preset) {
+      ['studio', 'cyber', 'dramatic'].forEach((p) => {
+        const btn = document.getElementById(`btn-light-${p}`);
+        if (btn) btn.classList.toggle('active', p === preset);
+      });
+
+      if (!dirLightKey || !dirLightFill || !dirLightRim || !ambientLight) return;
+
+      if (preset === 'studio') {
+        ambientLight.color.setHex(0xffffff);
+        ambientLight.intensity = 0.4;
+        dirLightKey.color.setHex(0xfff5ea);
+        dirLightKey.intensity = 1.4;
+        dirLightFill.color.setHex(0x90b4ce);
+        dirLightFill.intensity = 0.6;
+        dirLightRim.color.setHex(0x38bdf8);
+        dirLightRim.intensity = 1.2;
+        scene.background.setHex(0x0a0c10);
+      } else if (preset === 'cyber') {
+        ambientLight.color.setHex(0x1e1b4b);
+        ambientLight.intensity = 0.6;
+        dirLightKey.color.setHex(0x06b6d4);
+        dirLightKey.intensity = 1.8;
+        dirLightFill.color.setHex(0xd946ef);
+        dirLightFill.intensity = 1.5;
+        dirLightRim.color.setHex(0x3b82f6);
+        dirLightRim.intensity = 2.0;
+        scene.background.setHex(0x050510);
+      } else if (preset === 'dramatic') {
+        ambientLight.color.setHex(0x111111);
+        ambientLight.intensity = 0.15;
+        dirLightKey.color.setHex(0xffffff);
+        dirLightKey.intensity = 2.4;
+        dirLightFill.intensity = 0.1;
+        dirLightRim.color.setHex(0xf59e0b);
+        dirLightRim.intensity = 2.2;
+        scene.background.setHex(0x020204);
+      }
+    }
+    window.setLighting = setLighting;
+
+    function focusCamera(part) {
+      ['full', 'face', 'torso'].forEach((p) => {
+        const btn = document.getElementById(`btn-cam-${p}`);
+        if (btn) btn.classList.toggle('active', p === part);
+      });
+
+      if (!currentModelGroup) return;
+      const box = new THREE.Box3().setFromObject(currentModelGroup);
+      const center = box.getCenter(new THREE.Vector3());
+      const size = box.getSize(new THREE.Vector3());
+
+      if (part === 'full') {
+        controls.target.copy(center);
+        camera.position.set(center.x, center.y + 0.1, center.z + Math.max(size.y * 1.35, 2.3));
+      } else if (part === 'face') {
+        // Head is near top: center.y + size.y * 0.38
+        const headY = center.y + (size.y * 0.38);
+        controls.target.set(center.x, headY, center.z);
+        camera.position.set(center.x, headY, center.z + 0.65);
+      } else if (part === 'torso') {
+        const torsoY = center.y + (size.y * 0.1);
+        controls.target.set(center.x, torsoY, center.z);
+        camera.position.set(center.x, torsoY, center.z + 1.2);
+      }
+      controls.update();
+    }
+    window.focusCamera = focusCamera;
+
+    function toggleAutoRotate(enable) {
+      controls.autoRotate = enable;
+    }
+    window.toggleAutoRotate = toggleAutoRotate;
+
+    function updateLightIntensity(val) {
+      if (dirLightKey) dirLightKey.intensity = parseFloat(val);
+    }
+    window.updateLightIntensity = updateLightIntensity;
+
+    function updateRoughness(val) {
+      if (pbrMaterial) pbrMaterial.roughness = parseFloat(val);
+    }
+    window.updateRoughness = updateRoughness;
+
+    function updateAmbientIntensity(val) {
+      if (ambientLight) ambientLight.intensity = parseFloat(val);
+    }
+    window.updateAmbientIntensity = updateAmbientIntensity;
+
+    function toggleFlipY(enable) {
+      if (textures.diffuse) {
+        textures.diffuse.flipY = enable;
+        textures.diffuse.needsUpdate = true;
+      }
+      if (textures.roughness) {
+        textures.roughness.flipY = enable;
+        textures.roughness.needsUpdate = true;
+      }
+      if (textures.normal) {
+        textures.normal.flipY = enable;
+        textures.normal.needsUpdate = true;
+      }
+    }
+    window.toggleFlipY = toggleFlipY;
+
+    function toggleNormalMap(enable) {
+      if (!pbrMaterial) return;
+      if (enable && textures.normal) {
+        pbrMaterial.normalMap = textures.normal;
+        pbrMaterial.normalScale = new THREE.Vector2(0.8, 0.8);
+      } else {
+        pbrMaterial.normalMap = null;
+      }
+      pbrMaterial.needsUpdate = true;
+    }
+    window.toggleNormalMap = toggleNormalMap;
+
+    function resetCamera() {
+      if (currentModelGroup) {
+        fitModelToCamera(currentModelGroup);
+      } else {
+        camera.position.set(0, 0.2, 2.6);
+        controls.target.set(0, 0.05, 0);
+        controls.update();
+      }
+    }
+    window.resetCamera = resetCamera;
+
+    // Initialize application after all definitions are loaded
+    initScene();
+    setLighting('studio');
+    loadTexturesAndObjModel();
+  </script>
+</body>
+</html>
