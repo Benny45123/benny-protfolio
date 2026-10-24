@@ -162,7 +162,7 @@ const getMountedServerSnapshot = () => false;
 
 export default function AgenticVideoPipelineShowcase({
   videoSrc = "/videos/agentic-video-pipeline.mp4",
-  fallbackVideoSrc = "/assets/character/Generated%20Video%20October%2024,%202026%20-%204_05PM.mp4",
+  fallbackVideoSrc = "/videos/agentic-video-pipeline.mp4",
   posterSrc = "/videos/agentic-video-pipeline-poster.png",
   infographicSrc = "/assets/character/AI Video Pipeline Infographic.png",
   className = "",
