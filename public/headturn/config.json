@@ -1,0 +1,308 @@
+{
+ "fps": 30.0,
+ "fpsNote": "source extraction rate; the sequences are pose-indexed, not time-indexed",
+ "yawCount": 61,
+ "pitchCount": 15,
+ "smileCount": 12,
+ "centerIdx": 17,
+ "centerSourceFrame": 100,
+ "aspectRatio": 1.77778,
+ "aspect": "3840:2160",
+ "sourceResolution": {
+  "width": 3840,
+  "height": 2160
+ },
+ "anyTierUpscaled": false,
+ "tiers": [
+  {
+   "width": 960,
+   "height": 540,
+   "frames": 88,
+   "bytes": {
+    "avif": 2348188,
+    "webp": 1858506
+   },
+   "avgBytesPerFrame": {
+    "avif": 26684,
+    "webp": 21119
+   },
+   "upscaled": false
+  },
+  {
+   "width": 1440,
+   "height": 810,
+   "frames": 88,
+   "bytes": {
+    "avif": 4553079,
+    "webp": 3400720
+   },
+   "avgBytesPerFrame": {
+    "avif": 51740,
+    "webp": 38645
+   },
+   "upscaled": false
+  },
+  {
+   "width": 1920,
+   "height": 1080,
+   "frames": 88,
+   "bytes": {
+    "avif": 6356129,
+    "webp": 4454474
+   },
+   "avgBytesPerFrame": {
+    "avif": 72229,
+    "webp": 50619
+   },
+   "upscaled": false
+  },
+  {
+   "width": 2560,
+   "height": 1440,
+   "frames": 88,
+   "bytes": {
+    "avif": 9591032,
+    "webp": 7531890
+   },
+   "avgBytesPerFrame": {
+    "avif": 108989,
+    "webp": 85590
+   },
+   "upscaled": false
+  },
+  {
+   "width": 3840,
+   "height": 2160,
+   "frames": 88,
+   "bytes": {
+    "avif": 11250840,
+    "webp": 10858792
+   },
+   "avgBytesPerFrame": {
+    "avif": 127850,
+    "webp": 123395
+   },
+   "upscaled": false
+  }
+ ],
+ "paths": {
+  "avif": "frames/t{tier}/{seq}/{n}.avif",
+  "webp": "frames/t{tier}/{seq}/{n}.webp",
+  "placeholder": "frames/placeholder.webp",
+  "poster": "frames/poster.avif",
+  "note": "relative to this config.json; {seq} = yaw|pitch|smile, {n} = 4-digit 1-based index. pitch/0001 and smile/0001 are copies of the yaw centre frame (the loader reuses it)."
+ },
+ "easing": {
+  "type": "exponential",
+  "smoothing": 0.14,
+  "note": "fraction of remaining distance closed per 60 fps frame"
+ },
+ "deadZone": 0.06,
+ "interaction": {
+  "x": "pointer X -> yaw: left edge = frame 1, centre = centerIdx, right edge = frame yawCount (asymmetric footage: the left half turns the head less)",
+  "top": "pointer in the top region -> smile sequence (neutral at smileStart, full smile at smileEnd); yaw eases back to the frontal pose because the smile footage exists only at yaw ~ 0",
+  "bottom": "pointer in the bottom region (optional, lookDownZone) or ArrowDown -> pitch sequence (looking down)",
+  "touch": "drag horizontally -> yaw (relative to where the drag started); drag UP -> looking down; a tap does nothing; release resets",
+  "leave": "pointer leaving the area / touch release / blur resets yaw, pitch and smile to the neutral frontal centre frame"
+ },
+ "yawAnglesDeg": [
+  -23.155,
+  -22.315,
+  -21.083,
+  -21.052,
+  -19.748,
+  -18.364,
+  -17.03,
+  -11.578,
+  -11.578,
+  -10.435,
+  -6.631,
+  -2.913,
+  -2.585,
+  -2.585,
+  -2.113,
+  -1.235,
+  0.101,
+  1.428,
+  3.167,
+  4.883,
+  6.383,
+  7.468,
+  9.329,
+  10.094,
+  11.835,
+  13.518,
+  15.542,
+  16.503,
+  17.982,
+  19.729,
+  21.274,
+  22.864,
+  23.859,
+  25.447,
+  26.578,
+  28.599,
+  31.726,
+  31.958,
+  32.314,
+  34.416,
+  35.661,
+  37.269,
+  38.452,
+  40.224,
+  42.248,
+  43.299,
+  44.253,
+  44.274,
+  44.274,
+  51.468,
+  52.823,
+  53.21,
+  54.125,
+  56.524,
+  57.354,
+  59.514,
+  60.263,
+  62.42,
+  62.944,
+  64.517,
+  65.491
+ ],
+ "pitchAnglesDeg": [
+  0.0,
+  0.643,
+  0.979,
+  2.166,
+  4.584,
+  7.502,
+  10.256,
+  12.181,
+  13.123,
+  15.5,
+  16.077,
+  17.99,
+  18.555,
+  19.31,
+  20.011
+ ],
+ "smileAmounts": [
+  0.0,
+  0.0,
+  0.075,
+  0.158,
+  0.287,
+  0.424,
+  0.567,
+  0.576,
+  0.72,
+  0.822,
+  0.911,
+  1.0
+ ],
+ "angleConvention": "yaw_deg: + = face turned toward viewer RIGHT, - = viewer LEFT (screen space). pitch_deg: relative to centre frame, + = looking down. Angles come from landmark solvePnP with a generic head model (approximation).",
+ "yawRangeDeg": [
+  -23.155,
+  65.491
+ ],
+ "pitchRangeDeg": [
+  0,
+  20.011
+ ],
+ "sourceFrames": {
+  "yaw": [
+   4,
+   9,
+   10,
+   15,
+   17,
+   19,
+   20,
+   23,
+   21,
+   22,
+   24,
+   25,
+   108,
+   106,
+   107,
+   104,
+   100,
+   97,
+   194,
+   192,
+   94,
+   92,
+   189,
+   91,
+   90,
+   89,
+   87,
+   182,
+   140,
+   31,
+   141,
+   180,
+   32,
+   142,
+   179,
+   177,
+   144,
+   34,
+   35,
+   145,
+   146,
+   37,
+   39,
+   40,
+   155,
+   156,
+   162,
+   161,
+   163,
+   152,
+   157,
+   159,
+   42,
+   44,
+   45,
+   46,
+   47,
+   65,
+   69,
+   55,
+   54
+  ],
+  "pitch": [
+   100,
+   111,
+   114,
+   197,
+   199,
+   200,
+   201,
+   202,
+   204,
+   205,
+   206,
+   210,
+   211,
+   212,
+   215
+  ],
+  "smile": [
+   100,
+   264,
+   266,
+   269,
+   270,
+   271,
+   272,
+   273,
+   274,
+   276,
+   284,
+   296
+  ]
+ },
+ "alt": "Portrait that turns to follow the cursor"
+}
