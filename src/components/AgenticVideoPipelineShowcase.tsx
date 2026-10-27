@@ -1,23 +1,17 @@
 "use client";
 
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect, useCallback, useSyncExternalStore } from "react";
 import Image from "next/image";
 import {
   motion,
+  AnimatePresence,
   useScroll,
   useTransform,
   useSpring,
   useReducedMotion,
-  AnimatePresence,
 } from "framer-motion";
 import { sound } from "@/components/SoundEffects";
 import {
-  Play,
-  Pause,
-  Volume2,
-  VolumeX,
-  Maximize2,
-  Minimize2,
   Workflow,
   Cpu,
   Film,
@@ -25,17 +19,15 @@ import {
   CheckCircle2,
   ZoomIn,
   X,
-  Info,
   Terminal,
   ChevronLeft,
   ChevronRight,
-  Sparkles,
+  Scan,
+  Sliders,
 } from "lucide-react";
 
 export interface AgenticVideoPipelineShowcaseProps {
-  videoSrc?: string;
-  fallbackVideoSrc?: string;
-  posterSrc?: string;
+  photoSrc?: string;
   infographicSrc?: string;
   className?: string;
 }
@@ -53,6 +45,8 @@ interface PipelineStage {
     label: string;
     value: string;
     subtext: string;
+    metricLabel: string;
+    metricValue: string;
   };
   highlights: string[];
   technologies: string[];
@@ -63,7 +57,7 @@ const STAGES: PipelineStage[] = [
     id: "orchestration",
     index: "01",
     title: "ORCHESTRATION",
-    subtitle: "Deterministic Multi-Agent Coordination",
+    subtitle: "Multi-Agent Workflow Coordination",
     description:
       "LangGraph coordinates the multi-stage production workflow, managing stateful graph transitions, quality checks, and prompt preparation. FastAPI handles high-throughput asynchronous backend coordination.",
     badge: "WORKFLOW ENGINE",
@@ -71,13 +65,15 @@ const STAGES: PipelineStage[] = [
     accentColor: "#f59e0b",
     telemetry: {
       label: "ORCHESTRATOR",
-      value: "LangGraph StateGraph // FastAPI Async",
+      value: "LangGraph StateGraph, FastAPI",
       subtext: "Supabase State Checkpoints",
+      metricLabel: "STATE INTEGRITY",
+      metricValue: "Automated Checkpoints",
     },
     highlights: [
-      "Story development & script breakdown",
-      "Deterministic prompt preparation & validation",
-      "Stateful checkpointing & retry mechanisms",
+      "Story development and script breakdown",
+      "Deterministic prompt preparation and validation",
+      "Stateful checkpointing and retry mechanisms",
     ],
     technologies: ["Python", "FastAPI", "LangGraph", "Supabase", "MCP", "LiteLLM"],
   },
@@ -85,16 +81,18 @@ const STAGES: PipelineStage[] = [
     id: "inference",
     index: "02",
     title: "VIDEO INFERENCE",
-    subtitle: "Automated Diffusion Execution",
+    subtitle: "Headless Diffusion Execution",
     description:
       "ComfyUI executes the Wan 2.2 video generation workflow within a remote GPU runtime environment. Graph inputs are delivered programmatically, with automated model routing and fallback handling.",
     badge: "GPU WORKFLOW",
     icon: Cpu,
-    accentColor: "#fbbf24",
+    accentColor: "#06b6d4",
     telemetry: {
       label: "DIFFUSION MODEL",
-      value: "Wan 2.2 // ComfyUI Headless Graph",
+      value: "Wan 2.2 on ComfyUI Headless",
       subtext: "Remote GPU Runtime Environment",
+      metricLabel: "INFERENCE VRAM",
+      metricValue: "24GB FP8 Optimized",
     },
     highlights: [
       "Wan 2.2 diffusion video generation",
@@ -107,21 +105,23 @@ const STAGES: PipelineStage[] = [
     id: "assembly",
     index: "03",
     title: "ASSEMBLY & DELIVERY",
-    subtitle: "Automated Multi-Clip Stitching",
+    subtitle: "Automated Video Mastering",
     description:
       "Generated video segments (multiple ~10-second clips) are automatically combined and mastered using FFmpeg recipes into an assembled ~60-second narrative sequence ready for final distribution.",
     badge: "MEDIA PIPELINE",
     icon: Film,
-    accentColor: "#f59e0b",
+    accentColor: "#10b981",
     telemetry: {
       label: "ASSEMBLY",
-      value: "FFmpeg Concat Stream // ~10s x 6 -> 60s",
+      value: "FFmpeg Multi-Clip Concatenation",
       subtext: "Automated Pipeline Delivery Hooks",
+      metricLabel: "STREAM OUTPUT",
+      metricValue: "H.264 AAC Master",
     },
     highlights: [
       "Automated multi-clip concatenation",
-      "Streamable H.264 / AAC mastering",
-      "Automated pipeline delivery verification",
+      "Streamable H.264 and AAC mastering",
+      "Automated delivery verification hooks",
     ],
     technologies: ["FFmpeg", "H.264 / MP4", "Stream Packaging", "Delivery Webhooks"],
   },
@@ -139,6 +139,8 @@ const STAGES: PipelineStage[] = [
       label: "BLUEPRINT",
       value: "Full Pipeline Visual Architecture",
       subtext: "Inspect High-Resolution Schematic",
+      metricLabel: "SWARM TOPOLOGY",
+      metricValue: "4 Core Subsystem Nodes",
     },
     highlights: [
       "Complete node graph visualization",
@@ -161,43 +163,35 @@ const getMountedSnapshot = () => true;
 const getMountedServerSnapshot = () => false;
 
 export default function AgenticVideoPipelineShowcase({
-  videoSrc = "/videos/agentic-video-pipeline.mp4",
-  fallbackVideoSrc = "/videos/agentic-video-pipeline.mp4",
-  posterSrc = "/videos/agentic-video-pipeline-poster.png",
+  photoSrc,
   infographicSrc = "/assets/character/AI Video Pipeline Infographic.png",
   className = "",
 }: AgenticVideoPipelineShowcaseProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const progressBarRef = useRef<HTMLDivElement | null>(null);
+  const cardRef = useRef<HTMLDivElement | null>(null);
 
-  // Client mounting & desktop viewport detection using useSyncExternalStore (React 19 compliant)
-  const mounted = React.useSyncExternalStore(subscribeEmpty, getMountedSnapshot, getMountedServerSnapshot);
-  const isDesktop = React.useSyncExternalStore(subscribeResize, getDesktopSnapshot, getDesktopServerSnapshot);
+  const mounted = useSyncExternalStore(subscribeEmpty, getMountedSnapshot, getMountedServerSnapshot);
+  const isDesktop = useSyncExternalStore(subscribeResize, getDesktopSnapshot, getDesktopServerSnapshot);
   const prefersReducedMotion = useReducedMotion();
 
-  // Playback & interactive state
-  const [isPlaying, setIsPlaying] = useState<boolean>(false);
-  const [isMuted, setIsMuted] = useState<boolean>(true);
-  const [currentTime, setCurrentTime] = useState<number>(0);
-  const [duration, setDuration] = useState<number>(0);
-  const [videoError, setVideoError] = useState<boolean>(false);
-  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
+  // Active Stage & Lightbox State
   const [activeStageIndex, setActiveStageIndex] = useState<number>(0);
   const [showInfographicModal, setShowInfographicModal] = useState<boolean>(false);
-  const [viewMode, setViewMode] = useState<"video" | "blueprint">("video");
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
 
-  // Scroll tracking across the showcase section (pinned sticky window)
+  // 3D Spatial Interactive States
+  const [tilt, setTilt] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [cursorPos, setCursorPos] = useState<{ x: number; y: number }>({ x: 50, y: 50 });
+  const [isHovered, setIsHovered] = useState<boolean>(false);
+  const [isExploded, setIsExploded] = useState<boolean>(false);
+  const [isScanlineActive, setIsScanlineActive] = useState<boolean>(true);
+
+  // SCROLL-DRIVEN HORIZONTAL STAGE TRANSLATION
   const { scrollYProgress } = useScroll({
     target: containerRef,
     offset: ["start 80px", "end end"],
   });
 
-  // HORIZONTAL STAGE TRANSLATION WITH SPRING PHYSICS & RESTING ZONES:
-  // Each stage occupies 25% of the 400% track.
-  // Stage 01: 0% | Stage 02: -25% | Stage 03: -50% | Stage 04: -75%
-  // Keyframe resting zones allow comfortable viewing before transitioning to the next stage.
   const rawXNum = useTransform(
     scrollYProgress,
     [0, 0.12, 0.36, 0.44, 0.68, 0.76, 0.94, 1.0],
@@ -206,7 +200,6 @@ export default function AgenticVideoPipelineShowcase({
   const smoothXNum = useSpring(rawXNum, { stiffness: 220, damping: 28, mass: 0.5 });
   const horizontalX = useTransform(smoothXNum, (val) => `${val}%`);
 
-  // Glowing rail progress line (0% to 100%)
   const rawRail = useTransform(scrollYProgress, [0.05, 0.95], [0, 100]);
   const smoothRail = useSpring(rawRail, { stiffness: 220, damping: 28 });
   const railWidth = useTransform(smoothRail, (val) => `${Math.min(100, Math.max(0, val))}%`);
@@ -231,8 +224,38 @@ export default function AgenticVideoPipelineShowcase({
   }, [scrollYProgress, isDesktop]);
 
   const activeStage = STAGES[activeStageIndex];
+  // Displays user-configured photoSrc or the architecture blueprint by default
+  const activePhoto = photoSrc || infographicSrc;
 
-  // Stage selector: Smoothly glides to the target stage
+  // 3D Tilt calculation based on mouse position relative to the spatial viewport card
+  const handleMouseMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (prefersReducedMotion || !cardRef.current) return;
+    const rect = cardRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    const normX = Math.max(0, Math.min(1, x / rect.width));
+    const normY = Math.max(0, Math.min(1, y / rect.height));
+
+    const tiltMultiplier = isExploded ? 14 : 9;
+    const tiltX = (normY - 0.5) * -tiltMultiplier;
+    const tiltY = (normX - 0.5) * tiltMultiplier;
+
+    setTilt({ x: tiltX, y: tiltY });
+    setCursorPos({ x: normX * 100, y: normY * 100 });
+  };
+
+  const handlePointerEnter = () => {
+    setIsHovered(true);
+  };
+
+  const handlePointerLeave = () => {
+    setIsHovered(false);
+    setTilt({ x: 0, y: 0 });
+    setCursorPos({ x: 50, y: 50 });
+  };
+
+  // Stage Selector: Smoothly scrolls viewport when clicking stage button on desktop
   const selectStage = useCallback(
     (index: number) => {
       sound.click();
@@ -271,7 +294,7 @@ export default function AgenticVideoPipelineShowcase({
     }
   }, [activeStageIndex, selectStage]);
 
-  // Keyboard navigation when user uses ArrowLeft / ArrowRight
+  // Keyboard navigation for stages
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (
@@ -292,7 +315,7 @@ export default function AgenticVideoPipelineShowcase({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [nextStage, prevStage, showInfographicModal]);
 
-  // Touch handlers for mobile swipe
+  // Touch swipe support for mobile
   const handleTouchStart = (e: React.TouchEvent) => {
     setTouchStartX(e.touches[0].clientX);
   };
@@ -309,87 +332,20 @@ export default function AgenticVideoPipelineShowcase({
     setTouchStartX(null);
   };
 
-  // Play / Pause handler
-  const togglePlay = useCallback(() => {
-    sound.click();
-    if (!videoRef.current) return;
-
-    if (videoRef.current.paused || videoRef.current.ended) {
-      sound.wake();
-      videoRef.current
-        .play()
-        .then(() => {
-          setIsPlaying(true);
-        })
-        .catch((err) => {
-          console.warn("Autoplay or play prevented:", err);
-        });
-    } else {
-      videoRef.current.pause();
-      setIsPlaying(false);
-    }
-  }, []);
-
-  // Mute / Unmute handler
-  const toggleMute = useCallback(() => {
-    sound.click();
-    if (!videoRef.current) return;
-    const nextMuted = !videoRef.current.muted;
-    videoRef.current.muted = nextMuted;
-    setIsMuted(nextMuted);
-  }, []);
-
-  // Fullscreen toggle handler
-  const toggleFullscreen = useCallback(() => {
-    sound.click();
-    const frame = videoRef.current?.parentElement;
-    if (!frame) return;
-
-    if (!document.fullscreenElement) {
-      frame.requestFullscreen?.().then(() => setIsFullscreen(true)).catch(() => {});
-    } else {
-      document.exitFullscreen?.().then(() => setIsFullscreen(false)).catch(() => {});
-    }
-  }, []);
-
-  // Time update listener
-  const handleTimeUpdate = useCallback(() => {
-    if (!videoRef.current) return;
-    setCurrentTime(videoRef.current.currentTime);
-  }, []);
-
-  // Loaded metadata listener
-  const handleLoadedMetadata = useCallback(() => {
-    if (!videoRef.current) return;
-    setDuration(videoRef.current.duration || 0);
-    setVideoError(false);
-  }, []);
-
-  // Scrubber click handler
-  const handleScrubberClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!progressBarRef.current || !videoRef.current || !duration) return;
-    sound.click();
-    const rect = progressBarRef.current.getBoundingClientRect();
-    const clickX = e.clientX - rect.left;
-    const percentage = Math.max(0, Math.min(1, clickX / rect.width));
-    videoRef.current.currentTime = percentage * duration;
-    setCurrentTime(percentage * duration);
+  const toggleExploded = () => {
+    sound.wake();
+    setIsExploded(!isExploded);
   };
 
-  // Format seconds to mm:ss
-  const formatTime = (seconds: number) => {
-    if (!seconds || isNaN(seconds)) return "00:00";
-    const m = Math.floor(seconds / 60);
-    const s = Math.floor(seconds % 60);
-    return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+  const toggleScanline = () => {
+    sound.click();
+    setIsScanlineActive(!isScanlineActive);
   };
 
-  const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
-  const stageRailPercent = (activeStageIndex / (STAGES.length - 1)) * 100;
-
-  // Decide whether motion.div uses continuous scroll-driven horizontalX or mobile spring offset
+  // Determine whether motion.div uses continuous scroll-driven horizontalX or mobile tab offset
   const useContinuousScroll = mounted && isDesktop && !prefersReducedMotion;
   const trackX = useContinuousScroll ? horizontalX : `-${(activeStageIndex * 100) / STAGES.length}%`;
+  const stageRailPercent = ((activeStageIndex + 1) / STAGES.length) * 100;
   const trackRailWidth = useContinuousScroll ? railWidth : `${stageRailPercent}%`;
 
   return (
@@ -398,63 +354,57 @@ export default function AgenticVideoPipelineShowcase({
       id="agentic-pipeline"
       className={`relative w-full lg:min-h-[260vh] ${className}`}
     >
-      {/* =========================================================================
-          DESKTOP STICKY PINNED VIEWPORT / MOBILE RESPONSIVE WRAPPER
-          On desktop (lg+): Stays pinned at top-20 while user scrolls through 260vh.
-          Stages slide horizontally right before the user's eyes without vertical drift!
-          ========================================================================= */}
+      {/* DESKTOP STICKY PINNED VIEWPORT */}
       <div className="relative lg:sticky lg:top-20 lg:h-[calc(100vh-5.5rem)] w-full flex flex-col justify-center py-2 lg:py-4">
-        {/* Background Architectural Ambient Glow */}
+        {/* Background Architectural Ambient Radial Lighting */}
         <div className="absolute inset-0 pointer-events-none -z-10 flex items-center justify-center">
-          <div className="w-[700px] lg:w-[1100px] h-[350px] lg:h-[500px] rounded-full bg-[radial-gradient(ellipse_at_center,_rgba(245,158,11,0.08)_0%,_rgba(245,158,11,0.015)_45%,_transparent_72%)] blur-3xl" />
+          <div className="w-[600px] lg:w-[1000px] h-[350px] lg:h-[500px] rounded-full bg-[radial-gradient(ellipse_at_center,_rgba(245,158,11,0.07)_0%,_rgba(245,158,11,0.01)_50%,_transparent_72%)] blur-3xl" />
         </div>
 
-        {/* Showcase Sub-Header & View Switcher */}
-        <div className="w-full flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-white/[0.08] pb-3 mb-4">
-          <div className="flex items-center gap-3">
-            <span className="font-mono text-xs font-bold text-amber-400 uppercase tracking-widest">
-              Agentic AI Video Content Pipeline
+        {/* Project Header: Project Title & Description */}
+        <div className="w-full flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-white/[0.08] pb-4 mb-5">
+          <div className="max-w-2xl">
+            <span className="text-xs font-mono text-amber-400 uppercase tracking-widest block mb-1.5 font-medium">
+              Featured Architecture
             </span>
-            <span className="hidden sm:inline-block w-1 h-1 rounded-full bg-zinc-600" />
-            <span className="hidden sm:inline-block font-sans text-xs text-zinc-400">
-              From prompt to film &mdash; orchestrated by AI agents.
-            </span>
+            <h3 className="font-syne text-2xl sm:text-3xl lg:text-4xl font-bold text-white tracking-tight">
+              Agentic AI Video Pipeline
+            </h3>
+            <p className="mt-1.5 text-sm sm:text-base text-zinc-300 font-sans leading-relaxed">
+              Automated multi-agent generation coordinating LangGraph planning, headless ComfyUI video diffusion, and FFmpeg assembly.
+            </p>
           </div>
 
-          {/* View Mode Switcher: Cinematic Video vs Architecture Blueprint */}
-          <div className="flex items-center gap-2">
+          {/* Direct 3D Spatial Photo Interaction Controls */}
+          <div className="flex items-center gap-2 shrink-0">
             <button
-              onClick={() => {
-                sound.click();
-                setViewMode("video");
-              }}
+              onClick={toggleScanline}
               onMouseEnter={() => sound.hover()}
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full font-mono text-xs font-semibold transition-all cursor-pointer ${
-                viewMode === "video"
-                  ? "bg-amber-400 text-black shadow-md shadow-amber-400/20"
-                  : "border border-white/[0.1] bg-white/[0.03] text-zinc-400 hover:text-white hover:border-white/[0.2]"
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border text-xs font-space font-medium transition-all cursor-pointer ${
+                isScanlineActive
+                  ? "border-amber-400/50 bg-amber-400/15 text-amber-300 shadow-sm shadow-amber-400/20"
+                  : "border-white/[0.1] bg-white/[0.03] text-zinc-400 hover:text-white"
               }`}
-              aria-label="Switch to cinematic video view"
+              title="Toggle Holographic Scanline"
+              aria-label="Toggle Holographic Scanline"
             >
-              <Film className="w-3.5 h-3.5" />
-              <span>Cinematic Film</span>
+              <Scan className="w-3.5 h-3.5" />
+              <span>Scanline</span>
             </button>
 
             <button
-              onClick={() => {
-                sound.click();
-                setViewMode("blueprint");
-              }}
+              onClick={toggleExploded}
               onMouseEnter={() => sound.hover()}
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full font-mono text-xs font-semibold transition-all cursor-pointer ${
-                viewMode === "blueprint"
-                  ? "bg-amber-400 text-black shadow-md shadow-amber-400/20"
-                  : "border border-white/[0.1] bg-white/[0.03] text-zinc-400 hover:text-white hover:border-white/[0.2]"
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border text-xs font-space font-medium transition-all cursor-pointer ${
+                isExploded
+                  ? "border-amber-400 bg-amber-400 text-black font-bold shadow-md shadow-amber-400/30"
+                  : "border-white/[0.1] bg-white/[0.03] text-zinc-400 hover:border-amber-400/50 hover:text-white"
               }`}
-              aria-label="Switch to architecture blueprint view"
+              title="Explode 3D depth planes"
+              aria-label="Toggle 3D layer explosion"
             >
-              <Layers className="w-3.5 h-3.5" />
-              <span>Architecture Blueprint</span>
+              <Sliders className="w-3.5 h-3.5" />
+              <span>{isExploded ? "Collapse 3D" : "3D Explode"}</span>
             </button>
 
             <button
@@ -463,213 +413,176 @@ export default function AgenticVideoPipelineShowcase({
                 setShowInfographicModal(true);
               }}
               onMouseEnter={() => sound.hover()}
-              className="p-1.5 rounded-full border border-white/[0.1] bg-white/[0.03] text-zinc-400 hover:text-amber-400 hover:border-amber-400/30 transition-all cursor-pointer"
-              title="Inspect Full-Resolution Diagram"
-              aria-label="Inspect Full-Resolution Diagram"
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-white/[0.1] bg-white/[0.03] text-zinc-300 hover:border-amber-400/50 hover:text-amber-400 text-xs font-space font-medium transition-all cursor-pointer"
+              title="Inspect Full-Resolution Blueprint"
+              aria-label="Inspect Full-Resolution Blueprint"
             >
-              <ZoomIn className="w-4 h-4" />
+              <ZoomIn className="w-3.5 h-3.5" />
+              <span>Inspect</span>
             </button>
           </div>
         </div>
 
-        {/* =========================================================================
-            MAIN STAGE: TWO-COLUMN CINEMATIC COMPOSITION
-            Left: Large 16:9 Video Canvas (58% width)
-            Right: HORIZONTAL SLIDING STAGE RAIL (42% width)
-            ========================================================================= */}
-        <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-7 items-stretch">
-          {/* ---------------------------------------------------------------------
-              LEFT COLUMN: CINEMATIC 16:9 HERO VIDEO CANVAS (58% Desktop Width)
-              --------------------------------------------------------------------- */}
-          <div className="w-full lg:col-span-7 flex flex-col justify-between">
-            {/* The Video Display Bezel Container */}
-            <div className="group relative w-full aspect-video rounded-2xl overflow-hidden border border-white/[0.12] bg-[#07070a] shadow-[0_20px_50px_-15px_rgba(0,0,0,0.9)] transition-all duration-300 hover:border-amber-400/40">
-              {/* Atmospheric Glow Halo behind Bezel */}
+        {/* Main Two-Column Architectural Engineering Stage */}
+        <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-stretch">
+          {/* =======================================================================
+              LEFT COLUMN: SINGLE 3D SPATIAL PHOTO VIEWPORT (58% Desktop Width)
+              - Interactive 3D Perspective Gyro Tilt on Pointer Move
+              - Multi-depth Z-axis Layer Explosion Mode
+              - Holographic Scanline LiDAR Beam
+              - Precision Crosshairs & Real-Time Cursor Coordinates
+              ======================================================================= */}
+          <div className="w-full lg:col-span-7 flex flex-col justify-center">
+            <div
+              ref={cardRef}
+              onPointerMove={handleMouseMove}
+              onPointerEnter={handlePointerEnter}
+              onPointerLeave={handlePointerLeave}
+              className="relative w-full aspect-[16/10] sm:aspect-[16/9] rounded-2xl overflow-hidden border border-white/[0.12] bg-[#07070a] shadow-[0_25px_60px_-15px_rgba(0,0,0,0.9)] hover:border-amber-400/40 transition-all duration-300"
+              style={{
+                perspective: "1200px",
+                transformStyle: "preserve-3d",
+              }}
+            >
+              {/* 3D TILT CHASSIS CONTAINER */}
               <div
-                className={`absolute -inset-1 rounded-2xl bg-gradient-to-r from-amber-500/10 via-amber-400/15 to-transparent blur-xl pointer-events-none transition-opacity duration-700 ${
-                  isPlaying ? "opacity-100" : "opacity-35"
-                }`}
-              />
+                className="relative w-full h-full transition-transform duration-150 ease-out flex items-center justify-center select-none"
+                style={{
+                  transform: `rotateX(${tilt.x}deg) rotateY(${tilt.y}deg) scale3d(${isHovered ? 1.01 : 1}, ${isHovered ? 1.01 : 1}, 1)`,
+                  transformStyle: "preserve-3d",
+                }}
+              >
+                {/* LAYER 0: CNC AEROSPACE CHASSIS & BLUEPRINT BACKPLANE (Z: -25px) */}
+                <div
+                  className="absolute inset-0 subtle-grid opacity-30 pointer-events-none transition-transform duration-500"
+                  style={{
+                    transform: isExploded ? "translateZ(-35px) scale(0.96)" : "translateZ(0px)",
+                  }}
+                />
 
-              {/* VIEW MODE 1: CINEMATIC VIDEO */}
-              {viewMode === "video" && (
-                <div className="relative w-full h-full flex items-center justify-center bg-black">
-                  <video
-                    ref={videoRef}
-                    playsInline
-                    muted={isMuted}
-                    loop
-                    preload="metadata"
-                    poster={posterSrc}
-                    onTimeUpdate={handleTimeUpdate}
-                    onLoadedMetadata={handleLoadedMetadata}
-                    onError={() => setVideoError(true)}
-                    onClick={togglePlay}
-                    className="w-full h-full object-contain cursor-pointer"
-                  >
-                    <source src={videoSrc} type="video/mp4" />
-                    <source src={fallbackVideoSrc} type="video/mp4" />
-                    Your browser does not support the video tag.
-                  </video>
+                {/* Dynamic Mouse Glare Sheen Spotlight */}
+                <div
+                  className="absolute inset-0 pointer-events-none transition-opacity duration-300"
+                  style={{
+                    background: `radial-gradient(circle 380px at ${cursorPos.x}% ${cursorPos.y}%, rgba(245, 158, 11, 0.14) 0%, transparent 65%)`,
+                    opacity: isHovered ? 1 : 0.35,
+                  }}
+                />
 
-                  {/* Graceful Fallback Overlay if Video fails */}
-                  {videoError && (
-                    <div className="absolute inset-0 bg-[#08080b]/95 flex flex-col items-center justify-center p-6 text-center z-20">
-                      <Info className="w-8 h-8 text-amber-400 mb-2" />
-                      <h4 className="font-syne text-lg font-bold text-white">Video Asset Standby</h4>
-                      <p className="mt-1 font-sans text-xs text-zinc-400 max-w-sm">
-                        Configure your MP4 at <code className="text-amber-400 font-mono">/videos/agentic-video-pipeline.mp4</code>.
-                      </p>
-                    </div>
-                  )}
+                {/* LAYER 1: 3D SPATIAL PHOTO (BLUEPRINT / FEATURED IMAGE) */}
+                <div
+                  className="relative w-full h-full flex items-center justify-center overflow-hidden transition-all duration-500"
+                  style={{
+                    transform: isExploded ? "translateZ(40px) scale(1.02)" : "translateZ(15px)",
+                    transformStyle: "preserve-3d",
+                  }}
+                >
+                  <div className="relative w-full h-full bg-black flex items-center justify-center group/photo">
+                    <Image
+                      src={activePhoto}
+                      alt="Featured Engineering Architecture Blueprint"
+                      fill
+                      sizes="(max-width: 1024px) 100vw, 60vw"
+                      priority
+                      className="object-contain p-2 sm:p-4 filter contrast-[1.04]"
+                    />
 
-                  {/* Prominent Play / Resume Floating Badge when paused */}
-                  {!isPlaying && !videoError && (
-                    <div
-                      onClick={togglePlay}
-                      className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-[2px] transition-all cursor-pointer z-10 group-hover:bg-black/30"
-                    >
-                      <motion.button
-                        whileHover={{ scale: 1.08 }}
-                        whileTap={{ scale: 0.95 }}
-                        onMouseEnter={() => sound.hover()}
-                        aria-label="Play video showcase"
-                        className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-amber-400/90 hover:bg-amber-300 text-black flex items-center justify-center shadow-[0_0_35px_rgba(245,158,11,0.5)] transition-all cursor-pointer pl-1"
+                    {/* Holographic Scanline LiDAR Sweep Beam */}
+                    {isScanlineActive && (
+                      <div className="absolute inset-x-0 h-[2px] bg-gradient-to-r from-transparent via-amber-400 to-transparent shadow-[0_0_15px_#f59e0b] pointer-events-none animate-scanline" />
+                    )}
+
+                    {/* Interactive Reticle Crosshairs at Cursor Location */}
+                    {isHovered && (
+                      <div
+                        className="absolute pointer-events-none transition-all duration-75 flex items-center justify-center"
+                        style={{
+                          left: `${cursorPos.x}%`,
+                          top: `${cursorPos.y}%`,
+                          transform: "translate(-50%, -50%)",
+                        }}
                       >
-                        <Play className="w-8 h-8 fill-current" />
-                      </motion.button>
-                    </div>
-                  )}
+                        <div className="w-8 h-8 border border-amber-400/50 rounded-full flex items-center justify-center animate-pulse">
+                          <span className="w-1.5 h-1.5 bg-amber-400 rounded-full" />
+                        </div>
+                        <div className="absolute top-5 left-5 font-mono text-[9px] text-amber-400 bg-black/85 px-1.5 py-0.5 rounded border border-amber-400/30 whitespace-nowrap">
+                          X: {(cursorPos.x / 100).toFixed(3)} | Y: {(cursorPos.y / 100).toFixed(3)}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
 
-                  {/* Top HUD Telemetry Ribbon (Synchronized to Active Stage) */}
-                  <div className="absolute top-3 left-3 right-3 flex items-center justify-between pointer-events-none z-20 font-mono text-[10px] text-zinc-300">
-                    <div className="flex items-center gap-2 px-2.5 py-1 rounded-full bg-black/75 backdrop-blur-md border border-white/[0.08]">
+                {/* LAYER 2: FLOATING SPATIAL HUD & TELEMETRY (Z: +55px or +85px in Explode) */}
+                <div
+                  className="absolute inset-0 pointer-events-none p-3.5 sm:p-5 flex flex-col justify-between transition-transform duration-500"
+                  style={{
+                    transform: isExploded ? "translateZ(85px)" : "translateZ(40px)",
+                    transformStyle: "preserve-3d",
+                  }}
+                >
+                  {/* Top Floating HUD Ribbon */}
+                  <div className="flex items-center justify-between font-mono text-[10px] text-zinc-300 pointer-events-auto">
+                    <div className="flex items-center gap-2 px-2.5 py-1 rounded-full bg-black/80 backdrop-blur-md border border-white/[0.12] shadow-xl">
                       <span
-                        className={`w-1.5 h-1.5 rounded-full ${isPlaying ? "bg-emerald-400 animate-pulse" : "bg-amber-400"}`}
+                        className="w-1.5 h-1.5 rounded-full animate-pulse"
+                        style={{ backgroundColor: activeStage.accentColor }}
                       />
                       <span className="font-bold text-white tracking-wider">
-                        {isPlaying ? "LIVE PLAYBACK" : "CINEMATIC HERO"}
+                        PIPELINE SCHEMATIC
+                      </span>
+                      <span className="text-zinc-500">|</span>
+                      <span className="text-amber-400 font-mono">
+                        {activeStage.title}
                       </span>
                     </div>
 
-                    <div className="hidden sm:flex items-center gap-2 px-2.5 py-1 rounded-full bg-black/75 backdrop-blur-md border border-white/[0.08]">
-                      <Terminal className="w-3 h-3 text-amber-400" />
-                      <span className="text-zinc-300">{activeStage.telemetry.value}</span>
-                    </div>
-                  </div>
-
-                  {/* Bottom HUD Media Controls Bar */}
-                  <div className="absolute bottom-0 inset-x-0 p-3 bg-gradient-to-t from-black/90 via-black/60 to-transparent z-20 flex flex-col gap-2">
-                    {/* Interactive Scrubber Bar */}
-                    <div
-                      ref={progressBarRef}
-                      onClick={handleScrubberClick}
-                      className="group/scrub relative w-full h-1.5 hover:h-2.5 bg-white/20 rounded-full cursor-pointer transition-all overflow-hidden"
-                      title="Click to seek"
-                      role="progressbar"
-                      aria-valuenow={progressPercent}
-                      aria-valuemin={0}
-                      aria-valuemax={100}
-                      aria-label="Video playback progress"
-                    >
-                      <div
-                        className="h-full bg-gradient-to-r from-amber-500 to-amber-300 rounded-full transition-all duration-75 relative"
-                        style={{ width: `${progressPercent}%` }}
-                      >
-                        <span className="absolute right-0 top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-white shadow-md opacity-0 group-hover/scrub:opacity-100 transition-opacity" />
-                      </div>
-                    </div>
-
-                    {/* Control Icons & Time Display */}
-                    <div className="flex items-center justify-between font-mono text-xs text-zinc-300">
-                      <div className="flex items-center gap-2 sm:gap-3">
-                        <button
-                          onClick={togglePlay}
-                          onMouseEnter={() => sound.hover()}
-                          aria-label={isPlaying ? "Pause video" : "Play video"}
-                          className="p-1.5 rounded-lg hover:bg-white/10 text-white hover:text-amber-400 transition-colors cursor-pointer"
-                        >
-                          {isPlaying ? <Pause className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 fill-current" />}
-                        </button>
-
-                        <button
-                          onClick={toggleMute}
-                          onMouseEnter={() => sound.hover()}
-                          aria-label={isMuted ? "Unmute audio" : "Mute audio"}
-                          className="p-1.5 rounded-lg hover:bg-white/10 text-white hover:text-amber-400 transition-colors cursor-pointer"
-                        >
-                          {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4 text-amber-400" />}
-                        </button>
-
-                        <span className="text-[11px] text-zinc-400 tracking-wider">
-                          {formatTime(currentTime)} / {formatTime(duration || 60)}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center gap-1.5 sm:gap-2">
-                        <span className="hidden sm:inline-block px-2 py-0.5 rounded bg-white/[0.08] text-[10px] text-zinc-400">
-                          16:9 Master • Wan 2.2
-                        </span>
-
-                        <button
-                          onClick={toggleFullscreen}
-                          onMouseEnter={() => sound.hover()}
-                          aria-label="Toggle Fullscreen"
-                          className="p-1.5 rounded-lg hover:bg-white/10 text-white hover:text-amber-400 transition-colors cursor-pointer"
-                        >
-                          {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* VIEW MODE 2: ARCHITECTURE BLUEPRINT (Infographic Snapshot) */}
-              {viewMode === "blueprint" && (
-                <div className="relative w-full h-full bg-[#0a0a0f] flex items-center justify-center p-2 group/blueprint">
-                  <Image
-                    src={infographicSrc}
-                    alt="AI Video Pipeline Architecture Diagram"
-                    fill
-                    sizes="(max-width: 1024px) 100vw, 60vw"
-                    priority
-                    className="object-contain"
-                  />
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/blueprint:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-[2px]">
                     <button
                       onClick={() => {
                         sound.click();
                         setShowInfographicModal(true);
                       }}
-                      className="px-4 py-2 rounded-full bg-amber-400 hover:bg-amber-300 text-black font-space font-bold text-xs tracking-wider flex items-center gap-2 shadow-xl cursor-pointer"
+                      className="px-2.5 py-1 rounded-lg border border-white/[0.1] bg-black/70 hover:border-amber-400/50 hover:text-amber-400 text-zinc-300 backdrop-blur-md transition-all cursor-pointer"
+                      title="Zoom full resolution"
                     >
-                      <ZoomIn className="w-4 h-4" />
-                      <span>Inspect High-Resolution Diagram</span>
+                      <span className="text-[9px] font-space uppercase tracking-wider">Zoom Fullscreen</span>
                     </button>
                   </div>
-                </div>
-              )}
-            </div>
 
-            {/* Sub-Video Metric Banner */}
-            <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 px-1 text-xs font-mono text-zinc-400">
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-amber-400" />
-                <span className="text-zinc-300">Wan 2.2 • ComfyUI • FFmpeg Concat</span>
-              </div>
-              <div className="text-zinc-500">
-                Multiple ~10s clips assembled into ~60s master
+                  {/* Bottom Floating Telemetry Bar */}
+                  <div className="flex items-end justify-between font-mono text-[10px] text-zinc-400 pointer-events-auto">
+                    <div className="flex items-center gap-2 px-2.5 py-1 rounded-lg bg-black/80 backdrop-blur-md border border-white/[0.08]">
+                      <Terminal className="w-3 h-3 text-amber-400" />
+                      <span className="text-zinc-200">{activeStage.telemetry.value}</span>
+                    </div>
+
+                    <div className="hidden sm:flex items-center gap-2 px-2.5 py-1 rounded-lg bg-black/80 backdrop-blur-md border border-white/[0.08]">
+                      <span className="text-amber-400 font-bold">{activeStage.telemetry.metricValue}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Corner Architectural Crop Brackets */}
+                <div className="absolute top-2 left-2 text-white/30 font-mono text-xs pointer-events-none">
+                  ┌
+                </div>
+                <div className="absolute top-2 right-2 text-white/30 font-mono text-xs pointer-events-none">
+                  ┐
+                </div>
+                <div className="absolute bottom-2 left-2 text-white/30 font-mono text-xs pointer-events-none">
+                  └
+                </div>
+                <div className="absolute bottom-2 right-2 text-white/30 font-mono text-xs pointer-events-none">
+                  ┘
+                </div>
               </div>
             </div>
           </div>
 
-          {/* ---------------------------------------------------------------------
-              RIGHT COLUMN: TRUE HORIZONTAL SLIDING STAGE RAIL (42% Width)
-              - Translates horizontally along x-axis as the page is scrolled
-              - Also navigable via stage tabs, chevrons, touch swipe & arrow keys
-              - ZERO black gap, ZERO vertical runaway!
-              --------------------------------------------------------------------- */}
+          {/* =======================================================================
+              RIGHT COLUMN: TRUE HORIZONTAL SLIDING STAGE RAIL (42% Desktop Width)
+              - Horizontal translation along X-axis driven by vertical page scroll
+              ======================================================================= */}
           <div
             onTouchStart={handleTouchStart}
             onTouchEnd={handleTouchEnd}
@@ -678,7 +591,7 @@ export default function AgenticVideoPipelineShowcase({
             {/* Top Stage Control Header: Tabs + Prev/Next Buttons */}
             <div className="flex flex-col gap-2.5 mb-3">
               <div className="flex items-center justify-between gap-2">
-                {/* Stage Step Numbers */}
+                {/* Stage Step Number Buttons */}
                 <div className="flex items-center gap-1 sm:gap-2">
                   {STAGES.map((stg, i) => (
                     <button
@@ -686,19 +599,21 @@ export default function AgenticVideoPipelineShowcase({
                       onClick={() => selectStage(i)}
                       onMouseEnter={() => sound.hover()}
                       aria-label={`Jump to stage ${stg.index}: ${stg.title}`}
-                      className={`flex items-center gap-1.5 px-3 py-1 rounded-full font-mono text-xs transition-all cursor-pointer ${
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full font-mono text-xs transition-all cursor-pointer ${
                         activeStageIndex === i
                           ? "bg-amber-400 text-black font-bold shadow-md shadow-amber-400/25 scale-105"
                           : "border border-white/[0.08] bg-white/[0.03] text-zinc-400 hover:text-white hover:border-white/[0.2]"
                       }`}
                     >
                       <span>{stg.index}</span>
-                      <span className="hidden xl:inline text-[11px]">{stg.title.split(" ")[0]}</span>
+                      <span className="hidden xl:inline text-[11px] font-space font-medium">
+                        {stg.title.split(" ")[0]}
+                      </span>
                     </button>
                   ))}
                 </div>
 
-                {/* Prev & Next Floating Arrow Buttons */}
+                {/* Prev & Next Chevrons */}
                 <div className="flex items-center gap-1.5">
                   <button
                     onClick={prevStage}
@@ -740,10 +655,7 @@ export default function AgenticVideoPipelineShowcase({
               </div>
             </div>
 
-            {/* ===================================================================
-                THE HORIZONTAL SLIDING CARD CONTAINER
-                Smoothly translates along x-axis with spring animation
-                =================================================================== */}
+            {/* THE HORIZONTAL SLIDING CARD CONTAINER */}
             <div className="relative w-full overflow-hidden rounded-3xl border border-white/[0.1] bg-[#07070a]/90 backdrop-blur-md shadow-2xl p-5 sm:p-6 min-h-[360px] flex flex-col justify-between">
               {/* The Translating Strip */}
               <div className="overflow-hidden w-full flex-1 flex flex-col justify-between">
@@ -768,13 +680,23 @@ export default function AgenticVideoPipelineShowcase({
                         }`}
                       >
                         <div>
-                          {/* Stage Badge & Watermark */}
+                          {/* Stage Header Badge & Watermark */}
                           <div className="flex items-center justify-between mb-2">
                             <div className="flex items-center gap-2">
-                              <span className="p-1.5 rounded-lg bg-amber-400/10 text-amber-400 border border-amber-400/20">
+                              <span
+                                className="p-1.5 rounded-lg border"
+                                style={{
+                                  backgroundColor: `${stage.accentColor}15`,
+                                  borderColor: `${stage.accentColor}40`,
+                                  color: stage.accentColor,
+                                }}
+                              >
                                 <IconComponent className="w-4 h-4" />
                               </span>
-                              <span className="font-mono text-xs font-bold text-amber-400 uppercase tracking-widest">
+                              <span
+                                className="font-space text-xs font-bold uppercase tracking-widest"
+                                style={{ color: stage.accentColor }}
+                              >
                                 {stage.index} &mdash; {stage.title}
                               </span>
                             </div>
@@ -792,56 +714,52 @@ export default function AgenticVideoPipelineShowcase({
                             {stage.description}
                           </p>
 
-                          {/* Stage 4 Special: Interactive Thumbnail for Blueprint */}
-                          {stage.id === "blueprint" ? (
-                            <div className="mt-4 p-3.5 rounded-2xl border border-amber-400/30 bg-amber-400/[0.04] flex items-center justify-between gap-3">
-                              <div className="flex items-center gap-2.5">
-                                <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
-                                <span className="font-mono text-xs text-zinc-300">
-                                  High-resolution architecture blueprint
-                                </span>
+                          {/* Subsystem Telemetry Metric Callout */}
+                          <div className="mt-3.5 p-3 rounded-xl border border-white/[0.08] bg-white/[0.02] flex items-center justify-between">
+                            <div>
+                              <span className="font-space text-[10px] font-semibold text-zinc-400 uppercase tracking-wider block">
+                                {stage.telemetry.metricLabel}
+                              </span>
+                              <span className="font-mono text-xs font-bold text-amber-400">
+                                {stage.telemetry.metricValue}
+                              </span>
+                            </div>
+                            <span className="font-sans text-[11px] text-zinc-400 text-right">
+                              {stage.telemetry.subtext}
+                            </span>
+                          </div>
+
+                          {/* Highlights Bullet List */}
+                          <div className="mt-3 space-y-1.5 font-sans text-xs text-zinc-200">
+                            {stage.highlights.map((highlight, idx) => (
+                              <div key={idx} className="flex items-start gap-2.5">
+                                <CheckCircle2
+                                  className="w-3.5 h-3.5 mt-0.5 shrink-0"
+                                  style={{ color: stage.accentColor }}
+                                />
+                                <span>{highlight}</span>
                               </div>
-                              <button
-                                onClick={() => {
-                                  sound.click();
-                                  setShowInfographicModal(true);
-                                }}
-                                className="px-3.5 py-1.5 rounded-full bg-amber-400 hover:bg-amber-300 text-black font-space font-bold text-xs tracking-wide shrink-0 transition-all cursor-pointer"
-                              >
-                                Zoom Blueprint
-                              </button>
-                            </div>
-                          ) : (
-                            /* Highlights Bullet List */
-                            <div className="mt-4 space-y-2 font-mono text-xs text-zinc-300">
-                              {stage.highlights.map((h, idx) => (
-                                <div key={idx} className="flex items-start gap-2.5">
-                                  <CheckCircle2 className="w-3.5 h-3.5 text-amber-400 mt-0.5 shrink-0" />
-                                  <span>{h}</span>
-                                </div>
-                              ))}
-                            </div>
-                          )}
+                            ))}
+                          </div>
                         </div>
 
-                        {/* Tech Stack Strip at Bottom */}
+                        {/* Technologies Strip & Stage Action Footer */}
                         <div className="mt-5 pt-3.5 border-t border-white/[0.06] flex items-center justify-between">
                           <div className="flex flex-wrap gap-1.5">
                             {stage.technologies.slice(0, 4).map((tech) => (
                               <span
                                 key={tech}
-                                className="px-2 py-0.5 rounded bg-white/[0.05] border border-white/[0.08] text-[11px] font-mono text-zinc-300"
+                                className="px-2 py-0.5 rounded bg-white/[0.05] border border-white/[0.08] text-[11px] font-space text-zinc-300"
                               >
                                 {tech}
                               </span>
                             ))}
                           </div>
 
-                          {/* Next stage quick arrow button */}
                           {i < STAGES.length - 1 ? (
                             <button
                               onClick={nextStage}
-                              className="hidden sm:flex items-center gap-1 font-mono text-[11px] text-amber-400 hover:text-amber-300 transition-colors cursor-pointer"
+                              className="hidden sm:flex items-center gap-1 font-space text-xs text-amber-400 hover:text-amber-300 transition-colors cursor-pointer"
                             >
                               <span>Next</span>
                               <ChevronRight className="w-3.5 h-3.5" />
@@ -849,9 +767,9 @@ export default function AgenticVideoPipelineShowcase({
                           ) : (
                             <button
                               onClick={() => selectStage(0)}
-                              className="hidden sm:flex items-center gap-1 font-mono text-[11px] text-zinc-400 hover:text-amber-400 transition-colors cursor-pointer"
+                              className="hidden sm:flex items-center gap-1 font-space text-xs text-zinc-400 hover:text-amber-400 transition-colors cursor-pointer"
                             >
-                              <span>Restart 01</span>
+                              <span>Restart</span>
                             </button>
                           )}
                         </div>
@@ -861,25 +779,13 @@ export default function AgenticVideoPipelineShowcase({
                 </motion.div>
               </div>
             </div>
-
-            {/* Bottom Interactive Guidance Bar */}
-            <div className="mt-2.5 px-1 flex items-center justify-between text-xs font-mono text-zinc-500">
-              <div className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
-                <span className="hidden sm:inline">Scroll page, swipe, or use arrows to slide stages</span>
-                <span className="sm:hidden">Swipe or tap tabs to slide</span>
-              </div>
-              <span className="text-zinc-400">
-                Stage {activeStageIndex + 1} of {STAGES.length}
-              </span>
-            </div>
           </div>
         </div>
       </div>
 
-      {/* =========================================================================
+      {/* =======================================================================
           FULL-RESOLUTION ARCHITECTURE BLUEPRINT MODAL LIGHTBOX
-          ========================================================================= */}
+          ======================================================================= */}
       <AnimatePresence>
         {showInfographicModal && (
           <motion.div
@@ -921,7 +827,7 @@ export default function AgenticVideoPipelineShowcase({
               <div className="relative flex-1 min-h-[50vh] sm:min-h-[70vh] w-full p-4 bg-black flex items-center justify-center overflow-auto">
                 <div className="relative w-full h-full aspect-[1672/941]">
                   <Image
-                    src={infographicSrc}
+                    src={activePhoto}
                     alt="Agentic AI Video Pipeline Full Architecture"
                     fill
                     sizes="90vw"

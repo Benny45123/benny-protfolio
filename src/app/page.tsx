@@ -10,6 +10,8 @@ import AboutIdCard from "@/components/AboutIdCard";
 import AboutScrollReveal from "@/components/AboutScrollReveal";
 import AboutQuickFacts from "@/components/AboutQuickFacts";
 import AgenticVideoPipelineShowcase from "@/components/AgenticVideoPipelineShowcase";
+import PortfolioScrollEntrance from "@/components/PortfolioScrollEntrance";
+import { motion, useReducedMotion } from "framer-motion";
 import { sound } from "@/components/SoundEffects";
 import {
   ArrowUpRight,
@@ -23,6 +25,7 @@ import {
 } from "lucide-react";
 
 export default function Home() {
+  const prefersReducedMotion = useReducedMotion();
   const [headTurnApi, setHeadTurnApi] = useState<HeadTurnAPI | null>(null);
   const [copiedEmail, setCopiedEmail] = useState(false);
 
@@ -217,47 +220,31 @@ export default function Home() {
 
 
       {/* =========================================================================
-          SECTION: WORK & CAPABILITIES
+          SECTION: PORTFOLIO (WITH KINETIC SWIPE-UP REVEAL)
           ========================================================================= */}
-      <section id="work" className="relative z-10 py-24 sm:py-28 px-4 sm:px-8 lg:px-12 max-w-7xl 2xl:max-w-[1500px] mx-auto border-t border-white/[0.08]">
-        <div className="flex items-center gap-3 font-space text-xs font-bold text-amber-400 uppercase tracking-widest mb-4">
-          <span className="w-6 h-[2px] bg-amber-400" />
-          <span>Work & Production Systems</span>
-        </div>
+      <section id="portfolio" className="relative z-10 py-24 sm:py-28 px-4 sm:px-8 lg:px-12 max-w-7xl 2xl:max-w-[1500px] mx-auto border-t border-white/[0.08]">
+        <div id="work" className="absolute -top-24 pointer-events-none" />
 
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-10">
-          <div>
-            <h2 className="font-syne text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white tracking-tight">
-              FEATURED ENGINEERING
-            </h2>
-            <p className="mt-2 text-sm text-zinc-400 font-sans max-w-xl">
-              Deterministic agentic pipelines and distributed systems architected for production stability.
-            </p>
-          </div>
-          <div className="mt-3 sm:mt-0 font-mono text-xs text-amber-400 flex items-center gap-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
-            <span>01 / FLAGSHIP SHOWCASE</span>
-          </div>
-        </div>
-
-        {/* Flagship Cinematic Showcase Component */}
-        <div className="mb-20">
+        {/* Portfolio Section with Bidirectional Swipe-Up / Swipe-Down Scroll Motion */}
+        <PortfolioScrollEntrance>
           <AgenticVideoPipelineShowcase />
-        </div>
+        </PortfolioScrollEntrance>
 
-        {/* Core Competencies Sub-section */}
-        <div className="pt-12 border-t border-white/[0.08]">
+        {/* =========================================================================
+            SECTION: EXPERIENCE & CORE STACK
+            ========================================================================= */}
+        <div id="experience" className="pt-16 border-t border-white/[0.08] scroll-mt-24">
           <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-10">
             <div>
-              <span className="font-mono text-xs text-zinc-500 uppercase tracking-wider block mb-1">
-                Core Stack & Methodology
+              <span className="font-mono text-xs text-amber-400 uppercase tracking-wider block mb-1 font-medium">
+                Production Background
               </span>
-              <h3 className="font-syne text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-                ENGINEERING COMPETENCIES
+              <h3 className="font-syne text-2xl sm:text-3xl font-bold text-white tracking-tight">
+                Experience &amp; Stack
               </h3>
             </div>
             <p className="mt-3 sm:mt-0 font-space text-xs text-zinc-400">
-              Architected for zero backpressure and deterministic state preservation.
+              Autonomous agent architectures, distributed Python backends, and spatial systems.
             </p>
           </div>
 
@@ -341,14 +328,14 @@ export default function Home() {
       </section>
 
       {/* =========================================================================
-          SECTION: PORTFOLIO (Featured Architectures & Systems)
+          SECTION: FEATURED ARCHITECTURES & SYSTEMS
           ========================================================================= */}
-      <section id="portfolio" className="relative z-10 py-28 px-6 sm:px-12 max-w-7xl mx-auto border-t border-white/[0.08]">
+      <section id="architectures" className="relative z-10 py-28 px-6 sm:px-12 max-w-7xl mx-auto border-t border-white/[0.08]">
         <div className="flex items-center justify-between mb-12">
           <div>
             <div className="flex items-center gap-3 font-space text-xs font-bold text-amber-400 uppercase tracking-widest mb-3">
               <span className="w-6 h-[2px] bg-amber-400" />
-              <span>Portfolio & Systems</span>
+              <span>Architectures</span>
             </div>
             <h2 className="font-syne text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
               FEATURED ARCHITECTURES

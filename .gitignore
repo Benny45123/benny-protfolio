@@ -44,3 +44,5 @@ next-env.d.ts
 *.obj
 *.original_backup
 public/Benny-3D-Model-Profile/base.obj
+# Local AI agent skills and MCP configuration
+.agents/skills/

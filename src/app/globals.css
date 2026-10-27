@@ -98,3 +98,25 @@ body {
 .animate-spin-slow {
   animation: spinSlow 8s linear infinite;
 }
+
+@keyframes scanline {
+  0% {
+    top: 0%;
+    opacity: 0.1;
+  }
+  15% {
+    opacity: 0.95;
+  }
+  85% {
+    opacity: 0.95;
+  }
+  100% {
+    top: 100%;
+    opacity: 0.1;
+  }
+}
+
+.animate-scanline {
+  animation: scanline 3.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+

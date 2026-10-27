@@ -28,7 +28,7 @@ export default function Navbar() {
     <header
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
         scrolled
-          ? "bg-[#000000]/80 backdrop-blur-md border-b border-white/[0.06] py-4"
+          ? "bg-[#050508]/92 backdrop-blur-xl border-b border-white/[0.08] shadow-lg shadow-black/40 py-3.5"
           : "bg-transparent py-6"
       }`}
     >
@@ -45,7 +45,7 @@ export default function Navbar() {
           </span>
         </a>
 
-        {/* Clean Menu Items: About, Work, Portfolio, Contact */}
+        {/* Clean Menu Items: About, Portfolio, Experience, Contact */}
         <nav className="hidden md:flex items-center gap-9 text-sm font-space text-zinc-300">
           <a
             href="#about"
@@ -56,23 +56,20 @@ export default function Navbar() {
             About
           </a>
           <a
-            href="#work"
+            href="#portfolio"
             onMouseEnter={() => sound.hover()}
             onClick={() => sound.click()}
             className="hover:text-white transition-colors relative py-1 hover:after:w-full after:w-0 after:h-[2px] after:bg-amber-400 after:absolute after:bottom-0 after:left-0 after:transition-all"
           >
-            Work
+            Portfolio
           </a>
           <a
-            href="#portfolio"
+            href="#experience"
             onMouseEnter={() => sound.hover()}
             onClick={() => sound.click()}
-            className="hover:text-amber-400 font-medium transition-colors relative py-1 hover:after:w-full after:w-0 after:h-[2px] after:bg-amber-400 after:absolute after:bottom-0 after:left-0 after:transition-all flex items-center gap-1.5"
+            className="hover:text-white transition-colors relative py-1 hover:after:w-full after:w-0 after:h-[2px] after:bg-amber-400 after:absolute after:bottom-0 after:left-0 after:transition-all"
           >
-            <span>Portfolio</span>
-            <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
-              Systems
-            </span>
+            Experience
           </a>
           <a
             href="#contact"

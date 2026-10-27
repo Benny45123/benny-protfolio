@@ -261,7 +261,7 @@
   <div id="loading-overlay">
     <div class="spinner-ring"></div>
     <div class="loading-title">LOADING BENNY 3D MODEL</div>
-    <div class="loading-subtext">Fetching 201 MB geometry &amp; 4K Diffuse + Roughness textures</div>
+    <div class="loading-subtext">Streaming 99MB indexed GLB with embedded PBR textures</div>
     <div class="progress-bar-container">
       <div id="progress-bar" class="progress-bar"></div>
     </div>
@@ -270,9 +270,9 @@
 
   <!-- Stats Overlay -->
   <div class="stats-panel" id="stats-panel">
-    <div>Model: <span class="stats-val" id="stat-model">Character Full Body (39 MB GLB)</span></div>
-    <div>Polygons: <span class="stats-val" id="stat-polys">Full Body Mesh</span></div>
-    <div>Vertices: <span class="stats-val" id="stat-verts">Rigged Character</span></div>
+    <div>Model: <span class="stats-val" id="stat-model">Benny 3D Head Profile (3K GLB) (99 MB)</span></div>
+    <div>Polygons: <span class="stats-val" id="stat-polys">Parsing GLB...</span></div>
+    <div>Vertices: <span class="stats-val" id="stat-verts">Parsing GLB...</span></div>
     <div>Render: <span class="stats-val" id="stat-render">Textured &bull; Studio Lighting</span></div>
     <div>Framerate: <span class="stats-val" id="stat-fps">-- FPS</span></div>
   </div>
@@ -281,9 +281,9 @@
   <div class="controls-panel">
     <div class="panel-section-title">Model Asset</div>
     <select id="model-select" class="select-dropdown">
-      <option value="benny-glb" selected>Benny 3D Profile (Optimized 3K GLB)</option>
-      <option value="obj">Benny 3D Profile (201MB Raw OBJ)</option>
+      <option value="benny-glb" selected>Benny 3D Head Profile (3K GLB &bull; 99MB)</option>
       <option value="glb">Character Full Body (39MB GLB)</option>
+      <option value="obj">Benny 3D Profile (201MB Raw OBJ)</option>
       <option value="exported-glb" id="opt-exported-glb" style="display:none;">Generated Benny GLB (Comparison)</option>
     </select>
 
@@ -371,6 +371,7 @@
     let scene, camera, renderer, controls;
     let selectedExportRes = 3072;
     let currentModelGroup = null;
+    let cachedBennyGlbModel = null;
     let cachedObjModel = null;
     let cachedGlbModel = null;
     let cachedExportedGlbModel = null;
@@ -381,6 +382,26 @@
     let currentRenderMode = 'textured';
     let dirLightKey, dirLightFill, dirLightRim, ambientLight;
     let textures = {};
+
+    // Render-mode materials are created UP FRONT so every mode works even when the
+    // OBJ (which used to define them on first load) has never been opened.
+    // pbrMaterial is enriched with the local 4K textures once the OBJ path runs.
+    pbrMaterial = new THREE.MeshStandardMaterial({
+      color: 0xd8d8dc,
+      roughness: 0.45,
+      metalness: 0.0,
+      side: THREE.FrontSide
+    });
+    clayMaterial = new THREE.MeshStandardMaterial({
+      color: 0xd4d4d8,
+      roughness: 0.5,
+      metalness: 0.1,
+      side: THREE.FrontSide
+    });
+    wireframeMaterial = new THREE.MeshBasicMaterial({
+      color: 0x38bdf8,
+      wireframe: true
+    });
 
     // Performance FPS tracker
     let frameCount = 0;
@@ -667,24 +688,9 @@
     }
 
     function loadGlbModel() {
-
       if (cachedGlbModel) {
-        if (currentModelGroup) scene.remove(currentModelGroup);
-
-        currentModelGroup = cachedGlbModel;
-        scene.add(currentModelGroup);
-
-        fitModelToCamera(currentModelGroup);
-        focusCamera('full');
-
-        document.getElementById('stat-model').textContent =
-          'Character Full Body (39 MB GLB)';
-        document.getElementById('stat-polys').textContent =
-          'Full Body Mesh';
-        document.getElementById('stat-verts').textContent =
-          'Rigged Character';
+        activateGltfModel(cachedGlbModel, null);
         document.getElementById('model-select').value = 'glb';
-
         showLoading(false);
         return;
       }
@@ -692,7 +698,7 @@
       showLoading(
         true,
         "Loading Benny Full Body Character...",
-        "Streaming 39MB GLB..."
+        "Streaming 39MB GLB with PBR textures..."
       );
 
       const gltfLoader = new GLTFLoader();
@@ -700,54 +706,28 @@
       gltfLoader.load(
         '/assets/character/man_in_white_shirt_and_pants.glb',
         (gltf) => {
-          if (currentModelGroup) scene.remove(currentModelGroup);
-
-          currentModelGroup = gltf.scene;
-
-          currentModelGroup.traverse((child) => {
-            if (child.isMesh) {
-              child.castShadow = true;
-              child.receiveShadow = true;
-
-              if (!child.userData.originalMaterial) {
-                child.userData.originalMaterial =
-                  child.material;
-              }
-            }
-          });
-
-          cachedGlbModel = currentModelGroup;
-          scene.add(currentModelGroup);
-
-          fitModelToCamera(currentModelGroup);
-          focusCamera('full');
-
-          document.getElementById('stat-model').textContent =
-            'Character Full Body (39 MB GLB)';
-          document.getElementById('stat-polys').textContent =
-            'Full Body Mesh';
-          document.getElementById('stat-verts').textContent =
-            'Rigged Character';
-
+          const gltfScene = absorbGltfScene(gltf, 'Character Full Body (39 MB GLB)');
+          activateGltfModel(gltfScene, 'glb');
+          document.getElementById('model-select').value = 'glb';
           showLoading(false);
         },
         (xhr) => {
           if (xhr.lengthComputable && xhr.total > 0) {
-            const pct =
-              Math.round((xhr.loaded / xhr.total) * 100);
-
+            const mbLoaded = (xhr.loaded / 1024 / 1024).toFixed(1);
+            const mbTotal = (xhr.total / 1024 / 1024).toFixed(1);
+            const pct = Math.round((xhr.loaded / xhr.total) * 100);
             progressBar.style.width = `${pct}%`;
-            progressStatus.textContent =
-              `Downloading Character: ${pct}%`;
+            progressStatus.textContent = `Downloading Character: ${mbLoaded} MB / ${mbTotal} MB (${pct}%)`;
           } else {
             progressStatus.textContent =
               "Loading Character Full Body...";
           }
         },
         (err) => {
-          console.error(err);
-          progressStatus.textContent =
-            "Error loading GLB character.";
+          console.error('Failed to load character GLB:', err);
+          progressStatus.textContent = 'Error loading man_in_white_shirt_and_pants.glb — check Network/console.' +
+            (err && err.message ? ' (' + err.message + ')' : '');
+          showLoading(false);
         }
       );
     }
@@ -756,6 +736,13 @@
       const box = new THREE.Box3().setFromObject(object);
       const center = box.getCenter(new THREE.Vector3());
       const size = box.getSize(new THREE.Vector3());
+
+      // Guard against empty/NaN bounding boxes — they would point the camera at
+      // Nothing and blank the whole viewport (grid included).
+      if (!isFinite(center.x) || !isFinite(size.y) || size.y === 0) {
+        center.set(0, 0, 0);
+        size.set(1, 1, 1);
+      }
 
       controls.target.copy(center);
 
@@ -807,33 +794,24 @@
     }
 
     function loadBennyOptimizedGlb() {
-      const glbPath = '/Benny-3D-Model-Profile/Benny-3D-Model-Profile.glb';
-      showLoading(true, "Loading Benny 3D Profile...", "Streaming 95MB High-Fidelity GLB...");
+      // BASE GLB lives at the public root (99 MB, indexed, textures embedded).
+      const glbPath = '/Benny-3D-Model-Profile-3K.glb';
+
+      if (cachedBennyGlbModel) {
+        activateGltfModel(cachedBennyGlbModel, 'benny');
+        document.getElementById('model-select').value = 'benny-glb';
+        showLoading(false);
+        return;
+      }
+
+      showLoading(true, "Loading Benny 3D Head Profile...", "Streaming 99MB indexed GLB with embedded PBR textures...");
       const gltfLoader = new GLTFLoader();
 
       gltfLoader.load(
         glbPath,
         (gltf) => {
-          if (currentModelGroup) scene.remove(currentModelGroup);
-          currentModelGroup = gltf.scene;
-
-          currentModelGroup.traverse((child) => {
-            if (child.isMesh) {
-              child.castShadow = true;
-              child.receiveShadow = true;
-              if (!child.userData.originalMaterial) {
-                child.userData.originalMaterial = child.material;
-              }
-            }
-          });
-
-          scene.add(currentModelGroup);
-          fitModelToCamera(currentModelGroup);
-          focusCamera('full');
-
-          document.getElementById('stat-model').textContent = 'Benny 3D Profile (95 MB GLB)';
-          document.getElementById('stat-polys').textContent = '2,000,000 faces (Indexed)';
-          document.getElementById('stat-verts').textContent = '999,986 vertices';
+          const gltfScene = absorbGltfScene(gltf, 'Benny 3D Head Profile (3K GLB) (99 MB)');
+          activateGltfModel(gltfScene, 'benny');
           document.getElementById('model-select').value = 'benny-glb';
           showLoading(false);
         },
@@ -850,10 +828,121 @@
           }
         },
         (err) => {
-          console.warn("Optimized GLB not yet in public folder, falling back to OBJ...", err);
-          loadTexturesAndObjModel();
+          // Surface the failure instead of silently swapping in another asset,
+          // so a broken/missing GLB is never masked again.
+          console.error('Failed to load base GLB (' + glbPath + '):', err);
+          progressStatus.textContent = 'Error loading Benny-3D-Model-Profile-3K.glb — check Network/console.' +
+            (err && err.message ? ' (' + err.message + ')' : '');
+          document.getElementById('model-select').value = 'obj';
+          showLoading(false);
         }
       );
+    }
+
+    // ============================================================
+    // GLB RENDER HYGIENE — makes loaded GLBs draw pixel-identically clean
+    // ============================================================
+
+    // GLTFLoader restores mesh `extras` into userData VERBATIM. Our exported GLB
+    // bakes a THREE.Material.toJSON() dump into mesh.userData.originalMaterial —
+    // that is a PLAIN OBJECT, not a Material instance. Assigning it to
+    // mesh.material breaks WebGL program lookup and the mesh draws NOTHING
+    // (black screen while the grid keeps rendering). This guard removes that
+    // poisoned key and pins the REAL loader-built material instead.
+    function sanitizeGltfMesh(child) {
+      child.castShadow = true;
+      child.receiveShadow = true;
+
+      const baked = child.userData && child.userData.originalMaterial;
+      if (baked && !baked.isMaterial) {
+        console.warn('[GLB Hygiene] Removed baked userData.originalMaterial (Material JSON dump, not a live material instance).');
+        delete child.userData.originalMaterial;
+      }
+
+      if (child.material && child.material.isMaterial) {
+        child.userData.texturedMaterial = child.material;
+      } else {
+        child.material = pbrMaterial;
+      }
+
+      const geo = child.geometry;
+      if (geo) {
+        if (geo.attributes && geo.attributes.position) geo.computeBoundingSphere();
+        if (geo.attributes && geo.attributes.position) geo.computeBoundingBox();
+      }
+    }
+
+    function countGltfPolygons(gltfScene) {
+      let verts = 0;
+      let faces = 0;
+      let meshes = 0;
+
+      gltfScene.traverse((child) => {
+        if (!child.isMesh) return;
+        meshes++;
+
+        const geo = child.geometry;
+        if (geo) {
+          if (geo.attributes && geo.attributes.position) {
+            verts += geo.attributes.position.count;
+            if (geo.index) faces += geo.index.count / 3;
+            else faces += geo.attributes.position.count / 3;
+          }
+        }
+      });
+
+      return { meshes, verts, faces: Math.round(faces) };
+    }
+
+    function setGlbStats(gltfScene, statModelLabel) {
+      const counts = countGltfPolygons(gltfScene);
+      const enIN = (n) => n.toLocaleString('en-IN');
+
+      gltfScene.userData.statLabels = {
+        model: statModelLabel,
+        polys: `${enIN(counts.meshes)} meshes &bull; ${enIN(counts.faces)} faces`,
+        verts: `${enIN(counts.verts)} vertices`
+      };
+
+      document.getElementById('stat-model').textContent = gltfScene.userData.statLabels.model;
+      document.getElementById('stat-polys').innerHTML = gltfScene.userData.statLabels.polys;
+      document.getElementById('stat-verts').textContent = gltfScene.userData.statLabels.verts;
+    }
+
+    // Shared receive path for every GLB so all of them behave like the OBJ:
+    // real material left intact, shadows on, bounds refreshed, stats computed.
+    function absorbGltfScene(gltf, statModelLabel) {
+      const gltfScene = (gltf.scene || (gltf.scenes && gltf.scenes[0]));
+      if (!gltfScene) throw new Error('GLB parsed but contains no scene');
+
+      gltfScene.traverse((child) => {
+        if (child.isMesh) sanitizeGltfMesh(child);
+      });
+
+      setGlbStats(gltfScene, statModelLabel);
+      return gltfScene;
+    }
+
+    function activateGltfModel(gltfScene, cachedSlot) {
+      if (currentModelGroup) scene.remove(currentModelGroup);
+      currentModelGroup = gltfScene;
+
+      if (cachedSlot === 'benny') cachedBennyGlbModel = gltfScene;
+      if (cachedSlot === 'glb') cachedGlbModel = gltfScene;
+
+      scene.add(currentModelGroup);
+      fitModelToCamera(currentModelGroup);
+      focusCamera('full');
+
+      // Re-assert this asset's stats (they were overwritten by the previous asset).
+      const labels = gltfScene.userData && gltfScene.userData.statLabels;
+      if (labels) {
+        document.getElementById('stat-model').textContent = labels.model;
+        document.getElementById('stat-polys').innerHTML = labels.polys;
+        document.getElementById('stat-verts').textContent = labels.verts;
+      }
+
+      updateRenderStat();
     }
 
     // ============================================================
@@ -897,6 +986,18 @@
       try {
         // Clone model hierarchy so active scene object is untouched
         const exportGroup = targetMesh.clone(true);
+
+        // GLTFExporter serializes userData verbatim into glTF `extras`. We previously
+        // exported a THREE.Material JSON dump INSIDE userData.originalMaterial
+        // (which GLTFLoader then restores as a plain object and breaks rendering
+        // on the next load). Drop internal viewer bookkeeping keys so exports
+        // stay lean and reload-clean.
+        exportGroup.traverse((child) => {
+          if (child.userData) {
+            delete child.userData.originalMaterial;
+            delete child.userData.texturedMaterial;
+          }
+        });
 
         let initialVertCount = 0;
         let finalVertCount = 0;
@@ -1015,26 +1116,15 @@
       gltfLoader.load(
         url,
         (gltf) => {
-          if (currentModelGroup) scene.remove(currentModelGroup);
-          currentModelGroup = gltf.scene;
+          const gltfScene = absorbGltfScene(gltf, label);
 
-          currentModelGroup.traverse((child) => {
-            if (child.isMesh) {
-              child.castShadow = true;
-              child.receiveShadow = true;
-              if (!child.userData.originalMaterial) {
-                child.userData.originalMaterial = child.material;
-              }
-            }
-          });
+          if (currentModelGroup) scene.remove(currentModelGroup);
+          currentModelGroup = gltfScene;
 
           cachedExportedGlbModel = currentModelGroup;
           scene.add(currentModelGroup);
           fitModelToCamera(currentModelGroup);
 
-          document.getElementById('stat-model').textContent = `${label}`;
-          document.getElementById('stat-polys').textContent = 'Full Polygon Density';
-          document.getElementById('stat-verts').textContent = 'Binary PBR Shaders';
           document.getElementById('model-select').value = 'exported-glb';
 
           showLoading(false);
@@ -1092,8 +1182,13 @@
       currentModelGroup.traverse((child) => {
         if (child.isMesh) {
           if (mode === 'textured') {
-            child.material =
-              child.userData.originalMaterial || pbrMaterial;
+            // NEVER trust userData.originalMaterial from GLB `extras` — GLTFLoader
+            // restores it as a plain JSON object (baked Material dump) and
+            // assigning it as a material renders nothing. Prefer the real
+            // loader-built material captured during load, then fall back safely.
+            let texMat = child.userData.texturedMaterial || child.userData.originalMaterial;
+            if (!(texMat && texMat.isMaterial)) texMat = pbrMaterial;
+            child.material = texMat;
           } else {
             child.material = targetMat;
           }
