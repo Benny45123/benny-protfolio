@@ -10,6 +10,8 @@ import AboutIdCard from "@/components/AboutIdCard";
 import AboutScrollReveal from "@/components/AboutScrollReveal";
 import AboutQuickFacts from "@/components/AboutQuickFacts";
 import AgenticVideoPipelineShowcase from "@/components/AgenticVideoPipelineShowcase";
+import AgenticMerchantOSShowcase from "@/components/AgenticMerchantOSShowcase";
+import GovTransparencyRagShowcase from "@/components/GovTransparencyRagShowcase";
 import PortfolioScrollEntrance from "@/components/PortfolioScrollEntrance";
 import { motion, useReducedMotion } from "framer-motion";
 import { sound } from "@/components/SoundEffects";
@@ -227,7 +229,14 @@ export default function Home() {
 
         {/* Portfolio Section with Bidirectional Swipe-Up / Swipe-Down Scroll Motion */}
         <PortfolioScrollEntrance>
+          {/* Project 01: Agentic AI Video Pipeline (Visual Centerpiece) */}
           <AgenticVideoPipelineShowcase />
+
+          {/* Project 02: Agentic Merchant OS (Technical Centerpiece) */}
+          <AgenticMerchantOSShowcase />
+
+          {/* Project 03: Gov-Transparency RAG (Forensic Intelligence) */}
+          <GovTransparencyRagShowcase />
         </PortfolioScrollEntrance>
 
         {/* =========================================================================

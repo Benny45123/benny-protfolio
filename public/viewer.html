@@ -367,6 +367,8 @@
     import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
     import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
     import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js';
+    import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+    import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 
     let scene, camera, renderer, controls;
     let selectedExportRes = 3072;
@@ -402,6 +404,66 @@
       color: 0x38bdf8,
       wireframe: true
     });
+
+    // ============================================================
+    // FAST GLB PIPELINE — meshopt + KTX2 support with safe fallbacks
+    // ============================================================
+    // gltfpack output (-cc -tc) shrinks ~103MB -> ~25-30MB with identical
+    // visuals: EXT_meshopt_compression geometry + KTX2/Basis GPU textures.
+    // Each asset prefers its -packed.glb variant and transparently falls back
+    // to the original file when the packed one hasn't been generated yet.
+
+    let sharedKtx2Loader = null;
+
+    function createGltfLoader() {
+      const loader = new GLTFLoader();
+
+      // Decompresses EXT_meshopt_compression assets in WASM (no bundle size cost).
+      loader.setMeshoptDecoder(MeshoptDecoder);
+
+      // Transcodes ETC1S/UASTC (Basis) textures directly on the GPU.
+      if (!sharedKtx2Loader) {
+        sharedKtx2Loader = new KTX2Loader()
+          .setTranscoderPath('https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/libs/basis/')
+          .detectSupport(renderer);
+      }
+      loader.setKTX2Loader(sharedKtx2Loader);
+
+      return loader;
+    }
+
+    const BENNY_GLB_URLS = [
+      // Preferred: meshopt+KTX2 packed variant (generate with: npx gltfpack -i public/Benny-3D-Model-Profile-3K.glb -o public/Benny-3D-Model-Profile-3K-packed.glb -cc -tc)
+      '/Benny-3D-Model-Profile-3K-packed.glb',
+      // Original full-quality baseline export (99 MB)
+      '/Benny-3D-Model-Profile-3K.glb'
+    ];
+
+    const CHARACTER_GLB_URLS = [
+      // Preferred: packed variant
+      '/assets/character/man_in_white_shirt_and_pants-packed.glb',
+      // Original (39 MB)
+      '/assets/character/man_in_white_shirt_and_pants.glb'
+    ];
+
+    // Tries urls[0], then urls[1], ... — intermediate failures are logged, only
+    // the final failure is surfaced to the caller.
+    function loadGltfChain(gltfLoader, urls, { onParsed, onProgress, onFail }) {
+      const attempt = (idx) => {
+        gltfLoader.load(
+          urls[idx],
+          (gltf) => onParsed(gltf, urls[idx]),
+          (xhr) => onProgress(urls[idx], xhr),
+          (err) => {
+            if (idx + 1 < urls.length) {
+              console.info(`[Viewer] "${urls[idx]}" unavailable — falling back to "${urls[idx + 1]}"`);
+              attempt(idx + 1);
+            } else onFail(err);
+          }
+        );
+      };
+      attempt(0);
+    }
 
     // Performance FPS tracker
     let frameCount = 0;
@@ -698,20 +760,17 @@
       showLoading(
         true,
         "Loading Benny Full Body Character...",
-        "Streaming 39MB GLB with PBR textures..."
+        "Streaming optimized GLB with PBR textures..."
       );
 
-      const gltfLoader = new GLTFLoader();
-
-      gltfLoader.load(
-        '/assets/character/man_in_white_shirt_and_pants.glb',
-        (gltf) => {
+      loadGltfChain(createGltfLoader(), CHARACTER_GLB_URLS, {
+        onParsed: (gltf) => {
           const gltfScene = absorbGltfScene(gltf, 'Character Full Body (39 MB GLB)');
           activateGltfModel(gltfScene, 'glb');
           document.getElementById('model-select').value = 'glb';
           showLoading(false);
         },
-        (xhr) => {
+        onProgress: (xhr) => {
           if (xhr.lengthComputable && xhr.total > 0) {
             const mbLoaded = (xhr.loaded / 1024 / 1024).toFixed(1);
             const mbTotal = (xhr.total / 1024 / 1024).toFixed(1);
@@ -723,13 +782,13 @@
               "Loading Character Full Body...";
           }
         },
-        (err) => {
+        onFail: (err) => {
           console.error('Failed to load character GLB:', err);
           progressStatus.textContent = 'Error loading man_in_white_shirt_and_pants.glb — check Network/console.' +
             (err && err.message ? ' (' + err.message + ')' : '');
           showLoading(false);
         }
-      );
+      });
     }
 
     function fitModelToCamera(object) {
@@ -794,8 +853,9 @@
     }
 
     function loadBennyOptimizedGlb() {
-      // BASE GLB lives at the public root (99 MB, indexed, textures embedded).
-      const glbPath = '/Benny-3D-Model-Profile-3K.glb';
+      // BASE GLB at the public root. Packed (meshopt+KTX2) variant is preferred
+      // when present; the 99 MB original is the safe fallback.
+      const glbPath = BENNY_GLB_URLS[BENNY_GLB_URLS.length - 1];
 
       if (cachedBennyGlbModel) {
         activateGltfModel(cachedBennyGlbModel, 'benny');
@@ -804,18 +864,16 @@
         return;
       }
 
-      showLoading(true, "Loading Benny 3D Head Profile...", "Streaming 99MB indexed GLB with embedded PBR textures...");
-      const gltfLoader = new GLTFLoader();
+      showLoading(true, "Loading Benny 3D Head Profile...", "Streaming optimized GLB with embedded PBR textures...");
 
-      gltfLoader.load(
-        glbPath,
-        (gltf) => {
+      loadGltfChain(createGltfLoader(), BENNY_GLB_URLS, {
+        onParsed: (gltf) => {
           const gltfScene = absorbGltfScene(gltf, 'Benny 3D Head Profile (3K GLB) (99 MB)');
           activateGltfModel(gltfScene, 'benny');
           document.getElementById('model-select').value = 'benny-glb';
           showLoading(false);
         },
-        (xhr) => {
+        onProgress: (xhr) => {
           if (xhr.lengthComputable && xhr.total > 0) {
             const mbLoaded = (xhr.loaded / 1024 / 1024).toFixed(1);
             const mbTotal = (xhr.total / 1024 / 1024).toFixed(1);
@@ -827,7 +885,7 @@
             progressStatus.textContent = `Downloading: ${mbLoaded} MB...`;
           }
         },
-        (err) => {
+        onFail: (err) => {
           // Surface the failure instead of silently swapping in another asset,
           // so a broken/missing GLB is never masked again.
           console.error('Failed to load base GLB (' + glbPath + '):', err);
@@ -836,7 +894,7 @@
           document.getElementById('model-select').value = 'obj';
           showLoading(false);
         }
-      );
+      });
     }
 
     // ============================================================
@@ -1111,7 +1169,7 @@
 
     function loadBlobGlb(url, label = "GLB Model") {
       showLoading(true, `Loading ${label}...`, "Parsing binary buffers...");
-      const gltfLoader = new GLTFLoader();
+      const gltfLoader = createGltfLoader();
 
       gltfLoader.load(
         url,

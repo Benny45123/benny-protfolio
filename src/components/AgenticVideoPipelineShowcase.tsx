@@ -187,27 +187,55 @@ export default function AgenticVideoPipelineShowcase({
   const [isScanlineActive, setIsScanlineActive] = useState<boolean>(true);
 
   // SCROLL-DRIVEN HORIZONTAL STAGE TRANSLATION
+  // COVER RUNWAY: the pin (lg:min-h-[350vh]) reserves its first window for the
+  // staged horizontal journey and its lower third as the cover runway. Every
+  // journey mapping below reads `journeyProgress` — the pin progress normalized
+  // to [0.04, 0.63] — so all four stages complete and the world rests on 04
+  // BEFORE the Agentic Merchant OS plane's leading edge arrives (~65% of the
+  // same progress). The plane then glides across the remaining runway and pins
+  // over this world, while coverProgress (below) recedes this one for depth.
   const { scrollYProgress } = useScroll({
     target: containerRef,
     offset: ["start 80px", "end end"],
   });
+  const journeyProgress = useTransform(scrollYProgress, [0.04, 0.63], [0, 1]);
 
   const rawXNum = useTransform(
-    scrollYProgress,
+    journeyProgress,
     [0, 0.12, 0.36, 0.44, 0.68, 0.76, 0.94, 1.0],
     [0, 0, -25, -25, -50, -50, -75, -75]
   );
   const smoothXNum = useSpring(rawXNum, { stiffness: 220, damping: 28, mass: 0.5 });
   const horizontalX = useTransform(smoothXNum, (val) => `${val}%`);
 
-  const rawRail = useTransform(scrollYProgress, [0.05, 0.95], [0, 100]);
+  const rawRail = useTransform(journeyProgress, [0.05, 0.95], [0, 100]);
   const smoothRail = useSpring(rawRail, { stiffness: 220, damping: 28 });
   const railWidth = useTransform(smoothRail, (val) => `${Math.min(100, Math.max(0, val))}%`);
+
+  // WORLD COVERAGE EXIT: as the AMOS plane (next sibling, z-10, opaque, overlapping
+  // this root by one pinned viewport) rises over this pinned world, the outgoing
+  // stage recedes for depth — scale down, drift up and dim, ending fully occluded.
+  const { scrollYProgress: coverProgress } = useScroll({
+    target: containerRef,
+    // Span the recession across EXACTLY the cover glide. ["end 200vh"] = the
+    // moment the AMOS plane's edge arrives (its peek sits at 200vh - 88px);
+    // ["end 100vh"] = full occlusion as that plane pins over this one
+    // (occlusion completes at 100vh - 8px, so this clamps just 8px late).
+    // NOTE: framer's offset parser accepts only px/%/vw/vh — no calc().
+    offset: ["end 200vh", "end 100vh"],
+  });
+  const coverScale = useTransform(coverProgress, [0, 1], [1, 0.965]);
+  const coverY = useTransform(coverProgress, [0, 1], [0, -24]);
+  const coverOpacity = useTransform(coverProgress, [0, 1], [1, 0.55]);
+  const useCoverExit = mounted && !prefersReducedMotion;
+  const coverExitStyle = useCoverExit
+    ? { y: coverY, scale: coverScale, opacity: coverOpacity }
+    : undefined;
 
   // Dynamic active stage synchronization driven by vertical page scroll
   useEffect(() => {
     if (!isDesktop) return;
-    const unsubscribe = scrollYProgress.on("change", (latest) => {
+    const unsubscribe = journeyProgress.on("change", (latest) => {
       let idx = 0;
       if (latest < 0.24) {
         idx = 0;
@@ -221,7 +249,7 @@ export default function AgenticVideoPipelineShowcase({
       setActiveStageIndex(idx);
     });
     return () => unsubscribe();
-  }, [scrollYProgress, isDesktop]);
+  }, [journeyProgress, isDesktop]);
 
   const activeStage = STAGES[activeStageIndex];
   // Displays user-configured photoSrc or the architecture blueprint by default
@@ -270,7 +298,9 @@ export default function AgenticVideoPipelineShowcase({
         const scrollTravel = containerHeight - windowHeight;
 
         if (scrollTravel > 0) {
-          const stageFractions = [0.06, 0.4, 0.72, 0.97];
+          // Fractions are taken in journey space ([0.04, 0.63] of the pin), so
+          // each click lands exactly on a stage hold before the cover runway.
+          const stageFractions = [0.076, 0.273, 0.458, 0.603];
           const targetScroll = containerTop - 80 + scrollTravel * stageFractions[index];
           window.scrollTo({
             top: Math.max(0, targetScroll),
@@ -294,7 +324,7 @@ export default function AgenticVideoPipelineShowcase({
     }
   }, [activeStageIndex, selectStage]);
 
-  // Keyboard navigation for stages
+  // Keyboard navigation for stages (scoped to while this showcase is in view)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (
@@ -302,6 +332,14 @@ export default function AgenticVideoPipelineShowcase({
         document.activeElement?.tagName === "TEXTAREA"
       ) {
         return;
+      }
+      // Only respond while this pinned world occupies the viewport — sibling
+      // showcases register identical window listeners, so scope prevents
+      // double-triggering stage scrolls across consecutive project worlds.
+      if (containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect();
+        const inView = rect.top < window.innerHeight * 0.5 && rect.bottom > window.innerHeight * 0.5;
+        if (!inView) return;
       }
       if (e.key === "ArrowRight") {
         nextStage();
@@ -348,14 +386,19 @@ export default function AgenticVideoPipelineShowcase({
   const stageRailPercent = ((activeStageIndex + 1) / STAGES.length) * 100;
   const trackRailWidth = useContinuousScroll ? railWidth : `${stageRailPercent}%`;
 
+  // Pin: the staged journey fills the first window; the lower third is the cover
+  // runway the Agentic Merchant OS plane glides across after stage 04 completes.
   return (
     <div
       ref={containerRef}
       id="agentic-pipeline"
-      className={`relative w-full lg:min-h-[260vh] ${className}`}
+      className={`relative w-full lg:min-h-[350vh] ${className}`}
     >
-      {/* DESKTOP STICKY PINNED VIEWPORT */}
-      <div className="relative lg:sticky lg:top-20 lg:h-[calc(100vh-5.5rem)] w-full flex flex-col justify-center py-2 lg:py-4">
+      {/* DESKTOP STICKY PINNED VIEWPORT (world-exit recession applied while the next project plane covers this world) */}
+      <motion.div
+        style={coverExitStyle}
+        className="relative lg:sticky lg:top-20 lg:h-[calc(100vh-5.5rem)] w-full flex flex-col justify-center py-2 lg:py-4"
+      >
         {/* Background Architectural Ambient Radial Lighting */}
         <div className="absolute inset-0 pointer-events-none -z-10 flex items-center justify-center">
           <div className="w-[600px] lg:w-[1000px] h-[350px] lg:h-[500px] rounded-full bg-[radial-gradient(ellipse_at_center,_rgba(245,158,11,0.07)_0%,_rgba(245,158,11,0.01)_50%,_transparent_72%)] blur-3xl" />
@@ -781,7 +824,7 @@ export default function AgenticVideoPipelineShowcase({
             </div>
           </div>
         </div>
-      </div>
+      </motion.div>
 
       {/* =======================================================================
           FULL-RESOLUTION ARCHITECTURE BLUEPRINT MODAL LIGHTBOX
