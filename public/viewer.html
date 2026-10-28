@@ -432,10 +432,32 @@
       return loader;
     }
 
+    // Safe progress math for GLTF/OBJ downloads. Large CDN responses are
+    // routinely served WITHOUT Content-Length (gzip / chunked transfer), where
+    // XHR reports total === 0 and the naive (loaded / total) division yields
+    // "NaN MB". Every value here is finite-guarded so the loading overlay can
+    // never read NaN again, even if a CDN hands back bogus values.
+    function readProgress(xhr) {
+      const loaded = (xhr && Number.isFinite(xhr.loaded)) ? xhr.loaded : 0;
+      const total = (xhr && Number.isFinite(xhr.total) && xhr.lengthComputable) ? xhr.total : 0;
+      return {
+        mbLoaded: (loaded / 1048576).toFixed(1),
+        mbTotal: (total / 1048576).toFixed(1),
+        pct: (total > 0) ? Math.min(100, Math.round((loaded / total) * 100)) : -1,
+      };
+    }
+
     const BENNY_GLB_URLS = [
-      // Preferred: meshopt+KTX2 packed variant (generate with: npx gltfpack -i public/Benny-3D-Model-Profile-3K.glb -o public/Benny-3D-Model-Profile-3K-packed.glb -cc -tc)
+      // Packed-name URL: the full-quality baseline export (99 MB) currently
+      // occupies the packed filename after the rename, so the browser hits it
+      // directly — no 404 noise. Generating the genuinely compressed variant
+      // later (npx gltfpack -i Benny-3D-Model-Profile-3K-packed.glb -o
+      // temp-name.glb -cc -tc, then swap over) replaces this file and shrinks
+      // the download to ~25-30 MB.
       '/Benny-3D-Model-Profile-3K-packed.glb',
-      // Original full-quality baseline export (99 MB)
+      // Safety fallback: the legacy baseline filename nothing serves since the
+      // rename — only reached, and harmlessly surfaced via onFail, if the
+      // packed-name request itself fails at the network level.
       '/Benny-3D-Model-Profile-3K.glb'
     ];
 
@@ -453,7 +475,7 @@
         gltfLoader.load(
           urls[idx],
           (gltf) => onParsed(gltf, urls[idx]),
-          (xhr) => onProgress(urls[idx], xhr),
+          (evt) => onProgress(evt),
           (err) => {
             if (idx + 1 < urls.length) {
               console.info(`[Viewer] "${urls[idx]}" unavailable — falling back to "${urls[idx + 1]}"`);
@@ -716,25 +738,16 @@
             }, 100);
           },
           (xhr) => {
-            if (xhr.lengthComputable && xhr.total > 0) {
-              const mbLoaded =
-                (xhr.loaded / 1024 / 1024).toFixed(1);
-              const mbTotal =
-                (xhr.total / 1024 / 1024).toFixed(1);
-              const pct =
-                Math.round((xhr.loaded / xhr.total) * 100);
-
+            const p = readProgress(xhr);
+            if (p.pct >= 0) {
               progressBar.style.width =
-                `${Math.min(pct, 90)}%`;
+                `${Math.min(p.pct, 90)}%`;
 
               progressStatus.textContent =
-                `Downloading: ${mbLoaded} MB / ${mbTotal} MB (${pct}%)`;
+                `Downloading: ${p.mbLoaded} MB / ${p.mbTotal} MB (${p.pct}%)`;
             } else {
-              const mbLoaded =
-                (xhr.loaded / 1024 / 1024).toFixed(1);
-
               progressStatus.textContent =
-                `Streaming: ${mbLoaded} MB downloaded...`;
+                `Streaming: ${p.mbLoaded} MB downloaded...`;
             }
           },
           (err) => {
@@ -771,12 +784,10 @@
           showLoading(false);
         },
         onProgress: (xhr) => {
-          if (xhr.lengthComputable && xhr.total > 0) {
-            const mbLoaded = (xhr.loaded / 1024 / 1024).toFixed(1);
-            const mbTotal = (xhr.total / 1024 / 1024).toFixed(1);
-            const pct = Math.round((xhr.loaded / xhr.total) * 100);
-            progressBar.style.width = `${pct}%`;
-            progressStatus.textContent = `Downloading Character: ${mbLoaded} MB / ${mbTotal} MB (${pct}%)`;
+          const p = readProgress(xhr);
+          if (p.pct >= 0) {
+            progressBar.style.width = `${p.pct}%`;
+            progressStatus.textContent = `Downloading Character: ${p.mbLoaded} MB / ${p.mbTotal} MB (${p.pct}%)`;
           } else {
             progressStatus.textContent =
               "Loading Character Full Body...";
@@ -874,22 +885,19 @@
           showLoading(false);
         },
         onProgress: (xhr) => {
-          if (xhr.lengthComputable && xhr.total > 0) {
-            const mbLoaded = (xhr.loaded / 1024 / 1024).toFixed(1);
-            const mbTotal = (xhr.total / 1024 / 1024).toFixed(1);
-            const pct = Math.round((xhr.loaded / xhr.total) * 100);
-            progressBar.style.width = `${pct}%`;
-            progressStatus.textContent = `Streaming 3D Model: ${mbLoaded} MB / ${mbTotal} MB (${pct}%)`;
+          const p = readProgress(xhr);
+          if (p.pct >= 0) {
+            progressBar.style.width = `${p.pct}%`;
+            progressStatus.textContent = `Streaming 3D Model: ${p.mbLoaded} MB / ${p.mbTotal} MB (${p.pct}%)`;
           } else {
-            const mbLoaded = (xhr.loaded / 1024 / 1024).toFixed(1);
-            progressStatus.textContent = `Downloading: ${mbLoaded} MB...`;
+            progressStatus.textContent = `Downloading: ${p.mbLoaded} MB...`;
           }
         },
         onFail: (err) => {
           // Surface the failure instead of silently swapping in another asset,
           // so a broken/missing GLB is never masked again.
           console.error('Failed to load base GLB (' + glbPath + '):', err);
-          progressStatus.textContent = 'Error loading Benny-3D-Model-Profile-3K.glb — check Network/console.' +
+          progressStatus.textContent = 'Error loading Benny-3D-Model-Profile-3K-packed.glb — check Network/console.' +
             (err && err.message ? ' (' + err.message + ')' : '');
           document.getElementById('model-select').value = 'obj';
           showLoading(false);

@@ -68,6 +68,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      data-scroll-behavior="smooth"
       className={`${syne.variable} ${spaceGrotesk.variable} ${jetbrainsMono.variable} ${plusJakartaSans.variable} dark h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-[#000000] text-[#f4f4f6] font-sans antialiased selection:bg-amber-500 selection:text-black">
