@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback, useSyncExternalStore } from "react";
+import { createPortal } from "react-dom";
 import Image from "next/image";
 import {
   motion,
@@ -178,6 +179,25 @@ export default function AgenticVideoPipelineShowcase({
   const [activeStageIndex, setActiveStageIndex] = useState<number>(0);
   const [showInfographicModal, setShowInfographicModal] = useState<boolean>(false);
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
+
+  // Prevent background scroll and support ESC key while modal is open
+  useEffect(() => {
+    if (!showInfographicModal) return;
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setShowInfographicModal(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [showInfographicModal]);
 
   // 3D Spatial Interactive States
   const [tilt, setTilt] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -406,14 +426,11 @@ export default function AgenticVideoPipelineShowcase({
 
         {/* Project Header: Project Title & Description */}
         <div className="w-full flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-white/[0.08] pb-4 mb-5">
-          <div className="max-w-2xl">
-            <span className="text-xs font-mono text-amber-400 uppercase tracking-widest block mb-1.5 font-medium">
-              Featured Architecture
-            </span>
-            <h3 className="font-syne text-2xl sm:text-3xl lg:text-4xl font-bold text-white tracking-tight">
+          <div className="max-w-3xl">
+            <h3 className="font-syne text-2xl sm:text-3xl lg:text-4xl font-extrabold text-white tracking-[-0.03em] leading-tight">
               Agentic AI Video Pipeline
             </h3>
-            <p className="mt-1.5 text-sm sm:text-base text-zinc-300 font-sans leading-relaxed">
+            <p className="mt-1.5 text-xs sm:text-sm text-zinc-300 font-sans leading-relaxed">
               Automated multi-agent generation coordinating LangGraph planning, headless ComfyUI video diffusion, and FFmpeg assembly.
             </p>
           </div>
@@ -423,10 +440,10 @@ export default function AgenticVideoPipelineShowcase({
             <button
               onClick={toggleScanline}
               onMouseEnter={() => sound.hover()}
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border text-xs font-space font-medium transition-all cursor-pointer ${
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border text-xs font-space font-medium transition-all cursor-pointer backdrop-blur-md active:scale-95 ${
                 isScanlineActive
-                  ? "border-amber-400/50 bg-amber-400/15 text-amber-300 shadow-sm shadow-amber-400/20"
-                  : "border-white/[0.1] bg-white/[0.03] text-zinc-400 hover:text-white"
+                  ? "border-amber-400/50 bg-amber-400/15 text-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.25)]"
+                  : "border-white/[0.1] bg-white/[0.03] text-zinc-400 hover:text-white hover:border-white/[0.2]"
               }`}
               title="Toggle Holographic Scanline"
               aria-label="Toggle Holographic Scanline"
@@ -438,9 +455,9 @@ export default function AgenticVideoPipelineShowcase({
             <button
               onClick={toggleExploded}
               onMouseEnter={() => sound.hover()}
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border text-xs font-space font-medium transition-all cursor-pointer ${
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border text-xs font-space font-medium transition-all cursor-pointer backdrop-blur-md active:scale-95 ${
                 isExploded
-                  ? "border-amber-400 bg-amber-400 text-black font-bold shadow-md shadow-amber-400/30"
+                  ? "border-amber-400 bg-amber-400 text-black font-bold shadow-[0_0_16px_rgba(245,158,11,0.35)]"
                   : "border-white/[0.1] bg-white/[0.03] text-zinc-400 hover:border-amber-400/50 hover:text-white"
               }`}
               title="Explode 3D depth planes"
@@ -456,7 +473,7 @@ export default function AgenticVideoPipelineShowcase({
                 setShowInfographicModal(true);
               }}
               onMouseEnter={() => sound.hover()}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-white/[0.1] bg-white/[0.03] text-zinc-300 hover:border-amber-400/50 hover:text-amber-400 text-xs font-space font-medium transition-all cursor-pointer"
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-white/[0.1] bg-white/[0.03] hover:bg-white/[0.06] text-zinc-300 hover:border-amber-400/50 hover:text-amber-400 text-xs font-space font-medium transition-all cursor-pointer backdrop-blur-md active:scale-95"
               title="Inspect Full-Resolution Blueprint"
               aria-label="Inspect Full-Resolution Blueprint"
             >
@@ -605,19 +622,11 @@ export default function AgenticVideoPipelineShowcase({
                   </div>
                 </div>
 
-                {/* Corner Architectural Crop Brackets */}
-                <div className="absolute top-2 left-2 text-white/30 font-mono text-xs pointer-events-none">
-                  ┌
-                </div>
-                <div className="absolute top-2 right-2 text-white/30 font-mono text-xs pointer-events-none">
-                  ┐
-                </div>
-                <div className="absolute bottom-2 left-2 text-white/30 font-mono text-xs pointer-events-none">
-                  └
-                </div>
-                <div className="absolute bottom-2 right-2 text-white/30 font-mono text-xs pointer-events-none">
-                  ┘
-                </div>
+                {/* Precision Aerospace Corner Brackets */}
+                <div className="absolute top-3 left-3 w-3.5 h-3.5 border-t border-l border-white/40 pointer-events-none" />
+                <div className="absolute top-3 right-3 w-3.5 h-3.5 border-t border-r border-white/40 pointer-events-none" />
+                <div className="absolute bottom-3 left-3 w-3.5 h-3.5 border-b border-l border-white/40 pointer-events-none" />
+                <div className="absolute bottom-3 right-3 w-3.5 h-3.5 border-b border-r border-white/40 pointer-events-none" />
               </div>
             </div>
           </div>
@@ -644,8 +653,8 @@ export default function AgenticVideoPipelineShowcase({
                       aria-label={`Jump to stage ${stg.index}: ${stg.title}`}
                       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full font-mono text-xs transition-all cursor-pointer ${
                         activeStageIndex === i
-                          ? "bg-amber-400 text-black font-bold shadow-md shadow-amber-400/25 scale-105"
-                          : "border border-white/[0.08] bg-white/[0.03] text-zinc-400 hover:text-white hover:border-white/[0.2]"
+                          ? "bg-amber-400 text-black font-bold shadow-[0_0_16px_rgba(245,158,11,0.4)] scale-105"
+                          : "border border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.06] text-zinc-400 hover:text-white hover:border-white/[0.2]"
                       }`}
                     >
                       <span>{stg.index}</span>
@@ -666,7 +675,7 @@ export default function AgenticVideoPipelineShowcase({
                     className={`p-1.5 rounded-full border transition-all cursor-pointer ${
                       activeStageIndex === 0
                         ? "border-white/[0.05] text-zinc-600 cursor-not-allowed"
-                        : "border-white/[0.15] bg-white/[0.04] text-white hover:border-amber-400 hover:text-amber-400"
+                        : "border-white/[0.15] bg-white/[0.04] hover:bg-white/[0.08] text-white hover:border-amber-400 hover:text-amber-400 active:scale-95"
                     }`}
                   >
                     <ChevronLeft className="w-4 h-4" />
@@ -680,7 +689,7 @@ export default function AgenticVideoPipelineShowcase({
                     className={`p-1.5 rounded-full border transition-all cursor-pointer ${
                       activeStageIndex === STAGES.length - 1
                         ? "border-white/[0.05] text-zinc-600 cursor-not-allowed"
-                        : "border-white/[0.15] bg-white/[0.04] text-white hover:border-amber-400 hover:text-amber-400"
+                        : "border-white/[0.15] bg-white/[0.04] hover:bg-white/[0.08] text-white hover:border-amber-400 hover:text-amber-400 active:scale-95"
                     }`}
                   >
                     <ChevronRight className="w-4 h-4" />
@@ -689,17 +698,23 @@ export default function AgenticVideoPipelineShowcase({
               </div>
 
               {/* Glowing Horizontal Rail Track Bar */}
-              <div className="relative w-full h-1.5 bg-white/[0.08] rounded-full overflow-hidden">
+              <div className="relative w-full h-1.5 bg-white/[0.06] rounded-full overflow-hidden p-[1px]">
                 <motion.div
                   style={{ width: trackRailWidth }}
                   transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                  className="h-full bg-gradient-to-r from-amber-500 via-amber-400 to-amber-300 rounded-full"
+                  className="h-full bg-gradient-to-r from-amber-500 via-amber-400 to-amber-200 rounded-full shadow-[0_0_8px_rgba(245,158,11,0.5)]"
                 />
               </div>
             </div>
 
             {/* THE HORIZONTAL SLIDING CARD CONTAINER */}
-            <div className="relative w-full overflow-hidden rounded-3xl border border-white/[0.1] bg-[#07070a]/90 backdrop-blur-md shadow-2xl p-5 sm:p-6 min-h-[360px] flex flex-col justify-between">
+            <div className="relative w-full overflow-hidden rounded-3xl border border-white/[0.1] bg-gradient-to-b from-[#0c0c12]/95 via-[#08080c]/95 to-[#050508]/95 backdrop-blur-xl shadow-2xl p-5 sm:p-6 min-h-[360px] flex flex-col justify-between before:absolute before:inset-x-0 before:top-0 before:h-[1px] before:bg-gradient-to-r before:from-transparent before:via-white/20 before:to-transparent before:pointer-events-none">
+              {/* Dynamic Accent Corner Flare */}
+              <div
+                className="absolute -top-16 -right-16 w-40 h-40 rounded-full blur-3xl pointer-events-none transition-colors duration-500"
+                style={{ backgroundColor: `${activeStage.accentColor}18` }}
+              />
+
               {/* The Translating Strip */}
               <div className="overflow-hidden w-full flex-1 flex flex-col justify-between">
                 <motion.div
@@ -727,7 +742,7 @@ export default function AgenticVideoPipelineShowcase({
                           <div className="flex items-center justify-between mb-2">
                             <div className="flex items-center gap-2">
                               <span
-                                className="p-1.5 rounded-lg border"
+                                className="p-1.5 rounded-lg border shadow-sm backdrop-blur-sm"
                                 style={{
                                   backgroundColor: `${stage.accentColor}15`,
                                   borderColor: `${stage.accentColor}40`,
@@ -737,19 +752,19 @@ export default function AgenticVideoPipelineShowcase({
                                 <IconComponent className="w-4 h-4" />
                               </span>
                               <span
-                                className="font-space text-xs font-bold uppercase tracking-widest"
+                                className="font-space text-xs font-bold uppercase tracking-[0.2em]"
                                 style={{ color: stage.accentColor }}
                               >
                                 {stage.index} &mdash; {stage.title}
                               </span>
                             </div>
 
-                            <span className="font-mono text-3xl sm:text-4xl font-black text-white/[0.08] select-none">
+                            <span className="font-mono text-3xl sm:text-4xl font-black bg-gradient-to-b from-white/15 to-transparent bg-clip-text text-transparent select-none leading-none">
                               {stage.index}
                             </span>
                           </div>
 
-                          <h4 className="font-syne text-xl sm:text-2xl font-bold text-white tracking-tight">
+                          <h4 className="font-syne text-xl sm:text-2xl font-bold text-white tracking-[-0.02em] leading-snug">
                             {stage.subtitle}
                           </h4>
 
@@ -758,29 +773,29 @@ export default function AgenticVideoPipelineShowcase({
                           </p>
 
                           {/* Subsystem Telemetry Metric Callout */}
-                          <div className="mt-3.5 p-3 rounded-xl border border-white/[0.08] bg-white/[0.02] flex items-center justify-between">
+                          <div className="mt-3.5 p-3 rounded-xl border border-white/[0.08] bg-white/[0.02] hover:border-white/[0.14] transition-colors flex items-center justify-between shadow-sm">
                             <div>
-                              <span className="font-space text-[10px] font-semibold text-zinc-400 uppercase tracking-wider block">
+                              <span className="font-space text-[10px] font-semibold text-zinc-400 uppercase tracking-wider block mb-0.5">
                                 {stage.telemetry.metricLabel}
                               </span>
-                              <span className="font-mono text-xs font-bold text-amber-400">
+                              <span className="font-mono text-xs sm:text-sm font-bold text-amber-400">
                                 {stage.telemetry.metricValue}
                               </span>
                             </div>
-                            <span className="font-sans text-[11px] text-zinc-400 text-right">
+                            <span className="font-mono text-[11px] text-zinc-400 text-right">
                               {stage.telemetry.subtext}
                             </span>
                           </div>
 
                           {/* Highlights Bullet List */}
-                          <div className="mt-3 space-y-1.5 font-sans text-xs text-zinc-200">
+                          <div className="mt-3 space-y-1.5 font-sans text-xs sm:text-[13px] text-zinc-200">
                             {stage.highlights.map((highlight, idx) => (
-                              <div key={idx} className="flex items-start gap-2.5">
+                              <div key={idx} className="flex items-start gap-2.5 group">
                                 <CheckCircle2
-                                  className="w-3.5 h-3.5 mt-0.5 shrink-0"
+                                  className="w-3.5 h-3.5 mt-0.5 shrink-0 transition-transform group-hover:scale-110"
                                   style={{ color: stage.accentColor }}
                                 />
-                                <span>{highlight}</span>
+                                <span className="group-hover:text-white transition-colors">{highlight}</span>
                               </div>
                             ))}
                           </div>
@@ -792,7 +807,7 @@ export default function AgenticVideoPipelineShowcase({
                             {stage.technologies.slice(0, 4).map((tech) => (
                               <span
                                 key={tech}
-                                className="px-2 py-0.5 rounded bg-white/[0.05] border border-white/[0.08] text-[11px] font-space text-zinc-300"
+                                className="px-2.5 py-1 rounded-md bg-white/[0.04] border border-white/[0.08] hover:border-amber-400/30 hover:bg-amber-400/[0.06] text-[11px] font-space text-zinc-300 hover:text-white transition-all cursor-default"
                               >
                                 {tech}
                               </span>
@@ -802,15 +817,15 @@ export default function AgenticVideoPipelineShowcase({
                           {i < STAGES.length - 1 ? (
                             <button
                               onClick={nextStage}
-                              className="hidden sm:flex items-center gap-1 font-space text-xs text-amber-400 hover:text-amber-300 transition-colors cursor-pointer"
+                              className="hidden sm:flex items-center gap-1.5 font-space text-xs font-semibold text-amber-400 hover:text-amber-300 transition-colors cursor-pointer group"
                             >
                               <span>Next</span>
-                              <ChevronRight className="w-3.5 h-3.5" />
+                              <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
                             </button>
                           ) : (
                             <button
                               onClick={() => selectStage(0)}
-                              className="hidden sm:flex items-center gap-1 font-space text-xs text-zinc-400 hover:text-amber-400 transition-colors cursor-pointer"
+                              className="hidden sm:flex items-center gap-1.5 font-space text-xs font-semibold text-zinc-400 hover:text-amber-400 transition-colors cursor-pointer group"
                             >
                               <span>Restart</span>
                             </button>
@@ -828,73 +843,70 @@ export default function AgenticVideoPipelineShowcase({
 
       {/* =======================================================================
           FULL-RESOLUTION ARCHITECTURE BLUEPRINT MODAL LIGHTBOX
+          Portal to document.body ensures modal attaches to browser viewport directly
           ======================================================================= */}
-      <AnimatePresence>
-        {showInfographicModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-8 bg-black/90 backdrop-blur-md"
-            onClick={() => setShowInfographicModal(false)}
-          >
+      {mounted && typeof document !== "undefined" && createPortal(
+        <AnimatePresence>
+          {showInfographicModal && (
             <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
-              className="relative w-full max-w-6xl max-h-[92vh] flex flex-col rounded-3xl border border-white/[0.12] bg-[#08080c] shadow-2xl overflow-hidden"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[9999] flex flex-col p-2 sm:p-4 md:p-6 bg-black/95 backdrop-blur-xl"
+              onClick={() => setShowInfographicModal(false)}
             >
-              {/* Modal Header */}
-              <div className="flex items-center justify-between p-4 sm:p-6 border-b border-white/[0.08]">
-                <div className="flex items-center gap-3">
-                  <span className="w-2 h-2 rounded-full bg-amber-400" />
-                  <h3 className="font-syne text-lg sm:text-xl font-bold text-white">
-                    Agentic AI Video Pipeline // Architecture Blueprint
-                  </h3>
+              <motion.div
+                initial={{ scale: 0.96, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.96, opacity: 0 }}
+                onClick={(e) => e.stopPropagation()}
+                className="relative w-full h-full max-w-7xl mx-auto flex flex-col rounded-2xl border border-white/[0.12] bg-[#08080c] shadow-2xl overflow-hidden min-h-0"
+              >
+                {/* Modal Header */}
+                <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 border-b border-white/[0.08] shrink-0">
+                  <div className="flex items-center gap-3">
+                    <span className="w-2 h-2 rounded-full bg-amber-400" />
+                    <h3 className="font-syne text-base sm:text-lg font-bold text-white tracking-tight">
+                      Agentic AI Video Pipeline
+                    </h3>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <span className="hidden sm:inline-block font-mono text-[10px] text-zinc-500 uppercase tracking-wider px-2 py-0.5 rounded border border-white/[0.08]">
+                      ESC to close
+                    </span>
+                    <button
+                      onClick={() => {
+                        sound.click();
+                        setShowInfographicModal(false);
+                      }}
+                      className="p-1.5 rounded-full hover:bg-white/[0.1] text-zinc-400 hover:text-white transition-colors cursor-pointer"
+                      aria-label="Close modal"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
                 </div>
 
-                <button
-                  onClick={() => {
-                    sound.click();
-                    setShowInfographicModal(false);
-                  }}
-                  className="p-2 rounded-full hover:bg-white/[0.1] text-zinc-400 hover:text-white transition-colors cursor-pointer"
-                  aria-label="Close modal"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              {/* Modal Image Body */}
-              <div className="relative flex-1 min-h-[50vh] sm:min-h-[70vh] w-full p-4 bg-black flex items-center justify-center overflow-auto">
-                <div className="relative w-full h-full aspect-[1672/941]">
-                  <Image
-                    src={activePhoto}
-                    alt="Agentic AI Video Pipeline Full Architecture"
-                    fill
-                    sizes="90vw"
-                    className="object-contain"
-                  />
+                {/* Modal Image Canvas - Unconstrained aspect ratio, 100% object-contain, no cuts */}
+                <div className="relative flex-1 min-h-0 w-full p-2 sm:p-4 md:p-6 flex items-center justify-center bg-black/40">
+                  <div className="relative w-full h-full">
+                    <Image
+                      src={activePhoto}
+                      alt="Agentic AI Video Pipeline Architecture"
+                      fill
+                      sizes="95vw"
+                      priority
+                      className="object-contain"
+                    />
+                  </div>
                 </div>
-              </div>
-
-              {/* Modal Footer */}
-              <div className="p-4 sm:p-5 border-t border-white/[0.08] flex flex-col sm:flex-row items-center justify-between gap-3 font-mono text-xs text-zinc-400">
-                <div>
-                  Pipeline Architecture: LangGraph (Orchestration) &rarr; ComfyUI + Wan 2.2 (GPU Inference) &rarr; FFmpeg (Assembly)
-                </div>
-                <button
-                  onClick={() => setShowInfographicModal(false)}
-                  className="px-4 py-2 rounded-full bg-amber-400 hover:bg-amber-300 text-black font-space font-bold text-xs tracking-wide cursor-pointer"
-                >
-                  Close Blueprint
-                </button>
-              </div>
+              </motion.div>
             </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </div>
   );
 }

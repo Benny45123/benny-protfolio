@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useRef, useSyncExternalStore } from "react";
+import { sound } from "@/components/SoundEffects";
 import {
   motion,
   useScroll,
@@ -42,11 +43,6 @@ export default function PortfolioScrollEntrance({
   // HEADER KINETIC TRANSFORMS (Swipe-Up on scroll down, Swipe-Down on scroll up)
   // =========================================================================
 
-  // Kicker badge: glides in from bottom-left with beacon bloom
-  const kickerY = useTransform(springProgress, [0, 0.45], [24, 0]);
-  const kickerX = useTransform(springProgress, [0, 0.45], [-12, 0]);
-  const kickerOpacity = useTransform(springProgress, [0, 0.35], [0.2, 1]);
-
   // Title "PORTFOLIO": 3D perspective pitch settling, vertical lift, and tracking compression
   const titleY = useTransform(springProgress, [0.08, 0.72], [48, 0]);
   const titleRotateX = useTransform(springProgress, [0.08, 0.72], [10, 0]);
@@ -86,25 +82,6 @@ export default function PortfolioScrollEntrance({
       <div className="relative w-full mb-10 sm:mb-14 select-none">
         <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 pb-6">
           <div>
-            {/* Kicker Badge */}
-            <motion.div
-              style={{
-                y: useMotion ? kickerY : 0,
-                x: useMotion ? kickerX : 0,
-                opacity: useMotion ? kickerOpacity : 1,
-              }}
-              className="flex items-center gap-2.5 mb-2.5"
-            >
-              <span className="relative flex h-2.5 w-2.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-60" />
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-400 shadow-[0_0_10px_rgba(245,158,11,0.8)]" />
-              </span>
-              <span className="font-mono text-xs uppercase tracking-[0.25em] text-amber-400 font-semibold">
-                Selected Systems
-              </span>
-            </motion.div>
-
-            {/* Section Masthead: Space Grotesk Bold with dynamic tracking and 3D elevation */}
             <motion.h2
               style={{
                 y: useMotion ? titleY : 0,
@@ -113,7 +90,7 @@ export default function PortfolioScrollEntrance({
                 letterSpacing: useMotion ? titleTracking : "-0.03em",
                 transformOrigin: "center bottom",
               }}
-              className="font-space text-4xl sm:text-6xl lg:text-7xl font-bold text-white uppercase leading-[0.95]"
+              className="font-space text-4xl sm:text-6xl lg:text-7xl font-extrabold uppercase leading-[0.95] bg-gradient-to-r from-white via-zinc-100 to-zinc-400 bg-clip-text text-transparent"
             >
               Portfolio
             </motion.h2>
@@ -150,6 +127,48 @@ export default function PortfolioScrollEntrance({
               className="absolute top-0 bottom-0 w-32 bg-gradient-to-r from-transparent via-amber-300 to-transparent blur-[1px] opacity-80 pointer-events-none"
             />
           )}
+        </div>
+
+        {/* Subsections Quick Navigator HUD */}
+        <div className="mt-6 flex flex-wrap items-center gap-2.5 sm:gap-3 font-mono text-xs">
+          <span className="text-[11px] uppercase tracking-wider text-zinc-500 mr-1 hidden sm:inline-block">
+            Subsections:
+          </span>
+          <a
+            href="#projects"
+            onClick={() => sound.click()}
+            onMouseEnter={() => sound.hover()}
+            className="group flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-white/[0.08] bg-white/[0.02] hover:border-amber-400/40 hover:bg-amber-400/10 text-zinc-300 hover:text-amber-300 transition-all cursor-pointer"
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+            <span className="font-bold">01</span>
+            <span className="text-zinc-600 group-hover:text-amber-400/60">/</span>
+            <span>Projects</span>
+          </a>
+
+          <a
+            href="#skills"
+            onClick={() => sound.click()}
+            onMouseEnter={() => sound.hover()}
+            className="group flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-white/[0.08] bg-white/[0.02] hover:border-cyan-400/40 hover:bg-cyan-400/10 text-zinc-300 hover:text-cyan-300 transition-all cursor-pointer"
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
+            <span className="font-bold">02</span>
+            <span className="text-zinc-600 group-hover:text-cyan-400/60">/</span>
+            <span>Skills</span>
+          </a>
+
+          <a
+            href="#certifications"
+            onClick={() => sound.click()}
+            onMouseEnter={() => sound.hover()}
+            className="group flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-white/[0.08] bg-white/[0.02] hover:border-purple-400/40 hover:bg-purple-400/10 text-zinc-300 hover:text-purple-300 transition-all cursor-pointer"
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-purple-400" />
+            <span className="font-bold">03</span>
+            <span className="text-zinc-600 group-hover:text-purple-400/60">/</span>
+            <span>Certifications</span>
+          </a>
         </div>
       </div>
 

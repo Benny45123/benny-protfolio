@@ -231,7 +231,7 @@ export default function AboutScrollReveal() {
         className="mt-8 flex flex-wrap items-center gap-3"
       >
         <a
-          href="/resumes/Benny_resume_general.pdf"
+          href="/resumes/Bennyhinn_Bezawada_Resume.pdf"
           download="Bennyhinn_Bezawada_Resume.pdf"
           onClick={() => sound.click()}
           onMouseEnter={() => sound.hover()}

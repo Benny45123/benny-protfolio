@@ -45,7 +45,7 @@ export default function Navbar() {
           </span>
         </a>
 
-        {/* Clean Menu Items: About, Portfolio, Experience, Contact */}
+        {/* Clean Menu Items: About, Portfolio, Contact */}
         <nav className="hidden md:flex items-center gap-9 text-sm font-space text-zinc-300">
           <a
             href="#about"
@@ -62,14 +62,6 @@ export default function Navbar() {
             className="hover:text-white transition-colors relative py-1 hover:after:w-full after:w-0 after:h-[2px] after:bg-amber-400 after:absolute after:bottom-0 after:left-0 after:transition-all"
           >
             Portfolio
-          </a>
-          <a
-            href="#experience"
-            onMouseEnter={() => sound.hover()}
-            onClick={() => sound.click()}
-            className="hover:text-white transition-colors relative py-1 hover:after:w-full after:w-0 after:h-[2px] after:bg-amber-400 after:absolute after:bottom-0 after:left-0 after:transition-all"
-          >
-            Experience
           </a>
           <a
             href="#contact"

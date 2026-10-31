@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback, useSyncExternalStore } from "react";
+import { createPortal } from "react-dom";
 import Image from "next/image";
 import {
   motion,
@@ -182,6 +183,25 @@ export default function AgenticMerchantOSShowcase({
   const [activeStageIndex, setActiveStageIndex] = useState<number>(0);
   const [showInfographicModal, setShowInfographicModal] = useState<boolean>(false);
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
+
+  // Prevent background scroll and support ESC key while modal is open
+  useEffect(() => {
+    if (!showInfographicModal) return;
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setShowInfographicModal(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [showInfographicModal]);
 
   // 3D Spatial Interactive States
   const [tilt, setTilt] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -423,17 +443,14 @@ export default function AgenticMerchantOSShowcase({
 
         {/* Project Header: Project Title & Description */}
         <div className="w-full flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-white/[0.08] pb-3 mb-4">
-          <div className="max-w-2xl">
-            <span className="text-xs font-mono text-cyan-400 uppercase tracking-widest block mb-1.5 font-medium">
-              Featured Architecture
-            </span>
-            <h3 className="font-syne text-2xl sm:text-3xl lg:text-4xl font-bold text-white tracking-tight">
+          <div className="max-w-3xl">
+            <h3 className="font-syne text-2xl sm:text-3xl lg:text-4xl font-extrabold text-white tracking-[-0.03em] leading-tight">
               Agentic Merchant OS
             </h3>
-            <p className="mt-1.5 text-sm sm:text-base text-zinc-300 font-sans leading-relaxed">
+            <p className="mt-1.5 text-xs sm:text-sm text-zinc-300 font-sans leading-relaxed">
               A cryptographically bounded financial operating system for AI-native commerce — non-deterministic AI negotiation, deterministic payment execution.
             </p>
-            <p className="mt-1 text-[11px] font-mono text-zinc-500 tracking-tight">
+            <p className="mt-1 text-[10px] sm:text-[11px] font-mono text-zinc-500 tracking-tight">
               71/71 Pytests &middot; 11/11 E2E Scenarios &middot; 22 Invariant Guardrails &middot; &lt;50ms Decisions
             </p>
           </div>
@@ -443,10 +460,10 @@ export default function AgenticMerchantOSShowcase({
             <button
               onClick={toggleScanline}
               onMouseEnter={() => sound.hover()}
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border text-xs font-space font-medium transition-all cursor-pointer ${
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border text-xs font-space font-medium transition-all cursor-pointer backdrop-blur-md active:scale-95 ${
                 isScanlineActive
-                  ? "border-cyan-400/50 bg-cyan-400/15 text-cyan-300 shadow-sm shadow-cyan-400/20"
-                  : "border-white/[0.1] bg-white/[0.03] text-zinc-400 hover:text-white"
+                  ? "border-cyan-400/50 bg-cyan-400/15 text-cyan-300 shadow-[0_0_12px_rgba(6,182,212,0.25)]"
+                  : "border-white/[0.1] bg-white/[0.03] text-zinc-400 hover:text-white hover:border-white/[0.2]"
               }`}
               title="Toggle Holographic Scanline"
               aria-label="Toggle Holographic Scanline"
@@ -458,9 +475,9 @@ export default function AgenticMerchantOSShowcase({
             <button
               onClick={toggleExploded}
               onMouseEnter={() => sound.hover()}
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border text-xs font-space font-medium transition-all cursor-pointer ${
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border text-xs font-space font-medium transition-all cursor-pointer backdrop-blur-md active:scale-95 ${
                 isExploded
-                  ? "border-cyan-400 bg-cyan-400 text-black font-bold shadow-md shadow-cyan-400/30"
+                  ? "border-cyan-400 bg-cyan-400 text-black font-bold shadow-[0_0_16px_rgba(6,182,212,0.35)]"
                   : "border-white/[0.1] bg-white/[0.03] text-zinc-400 hover:border-cyan-400/50 hover:text-white"
               }`}
               title="Explode 3D depth planes"
@@ -476,7 +493,7 @@ export default function AgenticMerchantOSShowcase({
                 setShowInfographicModal(true);
               }}
               onMouseEnter={() => sound.hover()}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-white/[0.1] bg-white/[0.03] text-zinc-300 hover:border-cyan-400/50 hover:text-cyan-400 text-xs font-space font-medium transition-all cursor-pointer"
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-white/[0.1] bg-white/[0.03] hover:bg-white/[0.06] text-zinc-300 hover:border-cyan-400/50 hover:text-cyan-400 text-xs font-space font-medium transition-all cursor-pointer backdrop-blur-md active:scale-95"
               title="Inspect Full-Resolution Blueprint"
               aria-label="Inspect Full-Resolution Blueprint"
             >
@@ -631,19 +648,11 @@ export default function AgenticMerchantOSShowcase({
                   </div>
                 </div>
 
-                {/* Corner Architectural Crop Brackets */}
-                <div className="absolute top-2 left-2 text-white/30 font-mono text-xs pointer-events-none">
-                  ┌
-                </div>
-                <div className="absolute top-2 right-2 text-white/30 font-mono text-xs pointer-events-none">
-                  ┐
-                </div>
-                <div className="absolute bottom-2 left-2 text-white/30 font-mono text-xs pointer-events-none">
-                  └
-                </div>
-                <div className="absolute bottom-2 right-2 text-white/30 font-mono text-xs pointer-events-none">
-                  ┘
-                </div>
+                {/* Precision Aerospace Corner Brackets */}
+                <div className="absolute top-3 left-3 w-3.5 h-3.5 border-t border-l border-white/40 pointer-events-none" />
+                <div className="absolute top-3 right-3 w-3.5 h-3.5 border-t border-r border-white/40 pointer-events-none" />
+                <div className="absolute bottom-3 left-3 w-3.5 h-3.5 border-b border-l border-white/40 pointer-events-none" />
+                <div className="absolute bottom-3 right-3 w-3.5 h-3.5 border-b border-r border-white/40 pointer-events-none" />
               </div>
             </div>
           </div>
@@ -670,8 +679,8 @@ export default function AgenticMerchantOSShowcase({
                       aria-label={`Jump to stage ${stg.index}: ${stg.title}`}
                       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full font-mono text-xs transition-all cursor-pointer ${
                         activeStageIndex === i
-                          ? "text-black font-bold shadow-md scale-105"
-                          : "border border-white/[0.08] bg-white/[0.03] text-zinc-400 hover:text-white hover:border-white/[0.2]"
+                          ? "text-black font-bold shadow-[0_0_16px_rgba(6,182,212,0.4)] scale-105"
+                          : "border border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.06] text-zinc-400 hover:text-white hover:border-white/[0.2]"
                       }`}
                       style={
                         activeStageIndex === i
@@ -697,7 +706,7 @@ export default function AgenticMerchantOSShowcase({
                     className={`p-1.5 rounded-full border transition-all cursor-pointer ${
                       activeStageIndex === 0
                         ? "border-white/[0.05] text-zinc-600 cursor-not-allowed"
-                        : "border-white/[0.15] bg-white/[0.04] text-white hover:border-cyan-400 hover:text-cyan-400"
+                        : "border-white/[0.15] bg-white/[0.04] hover:bg-white/[0.08] text-white hover:border-cyan-400 hover:text-cyan-400 active:scale-95"
                     }`}
                   >
                     <ChevronLeft className="w-4 h-4" />
@@ -711,7 +720,7 @@ export default function AgenticMerchantOSShowcase({
                     className={`p-1.5 rounded-full border transition-all cursor-pointer ${
                       activeStageIndex === STAGES.length - 1
                         ? "border-white/[0.05] text-zinc-600 cursor-not-allowed"
-                        : "border-white/[0.15] bg-white/[0.04] text-white hover:border-cyan-400 hover:text-cyan-400"
+                        : "border-white/[0.15] bg-white/[0.04] hover:bg-white/[0.08] text-white hover:border-cyan-400 hover:text-cyan-400 active:scale-95"
                     }`}
                   >
                     <ChevronRight className="w-4 h-4" />
@@ -720,17 +729,23 @@ export default function AgenticMerchantOSShowcase({
               </div>
 
               {/* Glowing Horizontal Rail Track Bar */}
-              <div className="relative w-full h-1.5 bg-white/[0.08] rounded-full overflow-hidden">
+              <div className="relative w-full h-1.5 bg-white/[0.06] rounded-full overflow-hidden p-[1px]">
                 <motion.div
                   style={{ width: trackRailWidth }}
                   transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                  className="h-full bg-gradient-to-r from-cyan-500 via-cyan-400 to-amber-300 rounded-full"
+                  className="h-full bg-gradient-to-r from-cyan-500 via-cyan-400 to-amber-200 rounded-full shadow-[0_0_8px_rgba(6,182,212,0.5)]"
                 />
               </div>
             </div>
 
             {/* THE HORIZONTAL SLIDING CARD CONTAINER */}
-            <div className="relative w-full overflow-hidden rounded-3xl border border-white/[0.1] bg-[#07070a]/90 backdrop-blur-md shadow-2xl p-4 sm:p-5 min-h-[360px] flex flex-col justify-between">
+            <div className="relative w-full overflow-hidden rounded-3xl border border-white/[0.1] bg-gradient-to-b from-[#0c0c12]/95 via-[#08080c]/95 to-[#050508]/95 backdrop-blur-xl shadow-2xl p-4 sm:p-5 min-h-[360px] flex flex-col justify-between before:absolute before:inset-x-0 before:top-0 before:h-[1px] before:bg-gradient-to-r before:from-transparent before:via-white/20 before:to-transparent before:pointer-events-none">
+              {/* Dynamic Accent Corner Flare */}
+              <div
+                className="absolute -top-16 -right-16 w-40 h-40 rounded-full blur-3xl pointer-events-none transition-colors duration-500"
+                style={{ backgroundColor: `${activeStage.accentColor}18` }}
+              />
+
               {/* The Translating Strip */}
               <div className="overflow-hidden w-full flex-1 flex flex-col justify-between">
                 <motion.div
@@ -755,17 +770,17 @@ export default function AgenticMerchantOSShowcase({
                       >
                         <div>
                           {/* Stage Header Badge & Watermark */}
-                          <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center justify-between mb-1.5 sm:mb-2">
                             <div className="flex items-center gap-2">
                               <span
-                                className="p-1.5 rounded-lg border"
+                                className="p-1 sm:p-1.5 rounded-lg border"
                                 style={{
                                   backgroundColor: `${stage.accentColor}15`,
                                   borderColor: `${stage.accentColor}40`,
                                   color: stage.accentColor,
                                 }}
                               >
-                                <IconComponent className="w-4 h-4" />
+                                <IconComponent className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                               </span>
                               <span
                                 className="font-space text-xs font-bold uppercase tracking-widest"
@@ -775,58 +790,58 @@ export default function AgenticMerchantOSShowcase({
                               </span>
                             </div>
 
-                            <span className="font-mono text-3xl sm:text-4xl font-black text-white/[0.08] select-none">
+                            <span className="font-mono text-2xl sm:text-3xl xl:text-4xl font-black bg-gradient-to-b from-white/[0.16] to-white/[0.02] bg-clip-text text-transparent select-none leading-none">
                               {stage.index}
                             </span>
                           </div>
 
-                          <h4 className="font-syne text-xl sm:text-2xl font-bold text-white tracking-tight">
+                          <h4 className="font-syne text-lg sm:text-xl font-bold text-white tracking-tight leading-snug">
                             {stage.subtitle}
                           </h4>
 
-                          <p className="mt-1.5 text-xs sm:text-sm text-zinc-300 font-sans leading-relaxed">
+                          <p className="mt-1.5 text-xs sm:text-[13px] text-zinc-300 font-sans leading-normal sm:leading-relaxed">
                             {stage.description}
                           </p>
 
                           {/* Subsystem Telemetry Metric Callout */}
-                          <div className="mt-3 p-2.5 rounded-xl border border-white/[0.08] bg-white/[0.02] flex items-center justify-between">
-                            <div>
-                              <span className="font-space text-[10px] font-semibold text-zinc-400 uppercase tracking-wider block">
+                          <div className="mt-2.5 p-2 sm:p-2.5 rounded-xl border border-white/[0.08] bg-white/[0.03] backdrop-blur-sm flex items-center justify-between gap-3">
+                            <div className="min-w-0">
+                              <span className="font-space text-[9px] sm:text-[10px] font-semibold text-zinc-400 uppercase tracking-wider block truncate">
                                 {stage.telemetry.metricLabel}
                               </span>
                               <span
-                                className="font-mono text-xs font-bold"
+                                className="font-mono text-xs font-bold truncate block"
                                 style={{ color: stage.accentColor }}
                               >
                                 {stage.telemetry.metricValue}
                               </span>
                             </div>
-                            <span className="font-sans text-[11px] text-zinc-400 text-right">
+                            <span className="font-sans text-[10px] sm:text-[11px] text-zinc-400 text-right shrink-0">
                               {stage.telemetry.subtext}
                             </span>
                           </div>
 
-                          {/* Highlights Bullet List */}
-                          <div className="mt-2.5 space-y-1 font-sans text-xs text-zinc-200">
+                          {/* Highlights Bullet List (2-column responsive layout for 4 items) */}
+                          <div className="mt-2.5 grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-1.5 font-sans text-xs text-zinc-200">
                             {stage.highlights.map((highlight, idx) => (
-                              <div key={idx} className="flex items-start gap-2.5">
+                              <div key={idx} className="flex items-start gap-2">
                                 <CheckCircle2
                                   className="w-3.5 h-3.5 mt-0.5 shrink-0"
                                   style={{ color: stage.accentColor }}
                                 />
-                                <span>{highlight}</span>
+                                <span className="text-[11px] sm:text-xs leading-snug">{highlight}</span>
                               </div>
                             ))}
                           </div>
                         </div>
 
                         {/* Technologies Strip & Stage Action Footer */}
-                        <div className="mt-3.5 pt-3 border-t border-white/[0.06] flex items-center justify-between">
+                        <div className="mt-3 pt-2.5 sm:pt-3 border-t border-white/[0.06] flex items-center justify-between gap-2">
                           <div className="flex flex-wrap gap-1.5">
                             {stage.technologies.slice(0, 4).map((tech) => (
                               <span
                                 key={tech}
-                                className="px-2 py-0.5 rounded bg-white/[0.05] border border-white/[0.08] text-[11px] font-space text-zinc-300"
+                                className="px-2 py-0.5 rounded bg-white/[0.05] border border-white/[0.08] text-[10px] sm:text-[11px] font-space text-zinc-300 hover:border-white/20 hover:text-white transition-colors"
                               >
                                 {tech}
                               </span>
@@ -836,7 +851,7 @@ export default function AgenticMerchantOSShowcase({
                           {i < STAGES.length - 1 ? (
                             <button
                               onClick={nextStage}
-                              className="hidden sm:flex items-center gap-1 font-space text-xs text-cyan-400 hover:text-cyan-300 transition-colors cursor-pointer"
+                              className="hidden sm:flex items-center gap-1 font-space text-xs text-cyan-400 hover:text-cyan-300 transition-colors cursor-pointer shrink-0"
                             >
                               <span>Next</span>
                               <ChevronRight className="w-3.5 h-3.5" />
@@ -844,7 +859,7 @@ export default function AgenticMerchantOSShowcase({
                           ) : (
                             <button
                               onClick={() => selectStage(0)}
-                              className="hidden sm:flex items-center gap-1 font-space text-xs text-zinc-400 hover:text-cyan-400 transition-colors cursor-pointer"
+                              className="hidden sm:flex items-center gap-1 font-space text-xs text-zinc-400 hover:text-cyan-400 transition-colors cursor-pointer shrink-0"
                             >
                               <span>Restart</span>
                             </button>
@@ -862,73 +877,70 @@ export default function AgenticMerchantOSShowcase({
 
       {/* =======================================================================
           FULL-RESOLUTION ARCHITECTURE BLUEPRINT MODAL LIGHTBOX
+          Portal to document.body ensures modal attaches to browser viewport directly
           ======================================================================= */}
-      <AnimatePresence>
-        {showInfographicModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-8 bg-black/90 backdrop-blur-md"
-            onClick={() => setShowInfographicModal(false)}
-          >
+      {mounted && typeof document !== "undefined" && createPortal(
+        <AnimatePresence>
+          {showInfographicModal && (
             <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
-              className="relative w-full max-w-6xl max-h-[92vh] flex flex-col rounded-3xl border border-white/[0.12] bg-[#08080c] shadow-2xl overflow-hidden"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[9999] flex flex-col p-2 sm:p-4 md:p-6 bg-black/95 backdrop-blur-xl"
+              onClick={() => setShowInfographicModal(false)}
             >
-              {/* Modal Header */}
-              <div className="flex items-center justify-between p-4 sm:p-6 border-b border-white/[0.08]">
-                <div className="flex items-center gap-3">
-                  <span className="w-2 h-2 rounded-full bg-cyan-400" />
-                  <h3 className="font-syne text-lg sm:text-xl font-bold text-white">
-                    Agentic Merchant OS // Zero-LLM Transaction Spine
-                  </h3>
+              <motion.div
+                initial={{ scale: 0.96, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.96, opacity: 0 }}
+                onClick={(e) => e.stopPropagation()}
+                className="relative w-full h-full max-w-7xl mx-auto flex flex-col rounded-2xl border border-white/[0.12] bg-[#08080c] shadow-2xl overflow-hidden min-h-0"
+              >
+                {/* Modal Header */}
+                <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 border-b border-white/[0.08] shrink-0">
+                  <div className="flex items-center gap-3">
+                    <span className="w-2 h-2 rounded-full bg-cyan-400" />
+                    <h3 className="font-syne text-base sm:text-lg font-bold text-white tracking-tight">
+                      Agentic Merchant OS
+                    </h3>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <span className="hidden sm:inline-block font-mono text-[10px] text-zinc-500 uppercase tracking-wider px-2 py-0.5 rounded border border-white/[0.08]">
+                      ESC to close
+                    </span>
+                    <button
+                      onClick={() => {
+                        sound.click();
+                        setShowInfographicModal(false);
+                      }}
+                      className="p-1.5 rounded-full hover:bg-white/[0.1] text-zinc-400 hover:text-white transition-colors cursor-pointer"
+                      aria-label="Close modal"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
                 </div>
 
-                <button
-                  onClick={() => {
-                    sound.click();
-                    setShowInfographicModal(false);
-                  }}
-                  className="p-2 rounded-full hover:bg-white/[0.1] text-zinc-400 hover:text-white transition-colors cursor-pointer"
-                  aria-label="Close modal"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              {/* Modal Image Body */}
-              <div className="relative flex-1 min-h-[50vh] sm:min-h-[70vh] w-full p-4 bg-black flex items-center justify-center overflow-auto">
-                <div className="relative w-full h-full aspect-[1670/891]">
-                  <Image
-                    src={activePhoto}
-                    alt="Agentic Merchant OS Full Cryptographic Commerce Architecture"
-                    fill
-                    sizes="90vw"
-                    className="object-contain"
-                  />
+                {/* Modal Image Canvas - Unconstrained aspect ratio, 100% object-contain, no cuts */}
+                <div className="relative flex-1 min-h-0 w-full p-2 sm:p-4 md:p-6 flex items-center justify-center bg-black/40">
+                  <div className="relative w-full h-full">
+                    <Image
+                      src={activePhoto}
+                      alt="Agentic Merchant OS Architecture"
+                      fill
+                      sizes="95vw"
+                      priority
+                      className="object-contain"
+                    />
+                  </div>
                 </div>
-              </div>
-
-              {/* Modal Footer */}
-              <div className="p-4 sm:p-5 border-t border-white/[0.08] flex flex-col sm:flex-row items-center justify-between gap-3 font-mono text-xs text-zinc-400">
-                <div>
-                  Transaction Spine: Ingress &rarr; Agentic Negotiation &rarr; Guardian Air-Gap &rarr; Razorpay Settlement &rarr; Merkle Audit
-                </div>
-                <button
-                  onClick={() => setShowInfographicModal(false)}
-                  className="px-4 py-2 rounded-full bg-cyan-400 hover:bg-cyan-300 text-black font-space font-bold text-xs tracking-wide cursor-pointer"
-                >
-                  Close Blueprint
-                </button>
-              </div>
+              </motion.div>
             </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </div>
   );
 }

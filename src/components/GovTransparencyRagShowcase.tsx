@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback, useSyncExternalStore } from "react";
+import { createPortal } from "react-dom";
 import Image from "next/image";
 import {
   motion,
@@ -182,6 +183,25 @@ export default function GovTransparencyRagShowcase({
   const [showInfographicModal, setShowInfographicModal] = useState<boolean>(false);
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
 
+  // Prevent background scroll and support ESC key while modal is open
+  useEffect(() => {
+    if (!showInfographicModal) return;
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setShowInfographicModal(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [showInfographicModal]);
+
   // 3D Spatial Interactive States
   const [tilt, setTilt] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [cursorPos, setCursorPos] = useState<{ x: number; y: number }>({ x: 50, y: 50 });
@@ -190,29 +210,56 @@ export default function GovTransparencyRagShowcase({
   const [isScanlineActive, setIsScanlineActive] = useState<boolean>(true);
 
   // SCROLL-DRIVEN HORIZONTAL STAGE TRANSLATION
-  // NOTE: this is the final world — no successor plane covers it, so the staged
-  // journey maps across the full pin and no runway/exit machinery applies.
+  // COVER RUNWAY: the pin (lg:min-h-[350vh]) reserves its first window for the
+  // staged horizontal journey and its lower third as the cover runway. Every
+  // journey mapping below reads `journeyProgress` — the pin progress normalized
+  // to [0.04, 0.63] — so all four stages complete and the world rests on 04
+  // BEFORE the CareerForge AI plane's leading edge arrives (~65% of the same
+  // progress). The plane then glides across the remaining runway and pins over
+  // this world, while coverProgress (below) recedes this one for depth.
   const { scrollYProgress } = useScroll({
     target: containerRef,
     offset: ["start 80px", "end end"],
   });
+  const journeyProgress = useTransform(scrollYProgress, [0.04, 0.63], [0, 1]);
 
   const rawXNum = useTransform(
-    scrollYProgress,
+    journeyProgress,
     [0, 0.12, 0.36, 0.44, 0.68, 0.76, 0.94, 1.0],
     [0, 0, -25, -25, -50, -50, -75, -75]
   );
   const smoothXNum = useSpring(rawXNum, { stiffness: 220, damping: 28, mass: 0.5 });
   const horizontalX = useTransform(smoothXNum, (val) => `${val}%`);
 
-  const rawRail = useTransform(scrollYProgress, [0.05, 0.95], [0, 100]);
+  const rawRail = useTransform(journeyProgress, [0.05, 0.95], [0, 100]);
   const smoothRail = useSpring(rawRail, { stiffness: 220, damping: 28 });
   const railWidth = useTransform(smoothRail, (val) => `${Math.min(100, Math.max(0, val))}%`);
+
+  // WORLD COVERAGE EXIT: as the CareerForge AI plane (next sibling, z-30,
+  // opaque, overlapping this root by one pinned viewport) rises over this
+  // pinned world, the outgoing stage recedes for depth — scale down, drift up
+  // and dim, ending fully occluded.
+  const { scrollYProgress: coverProgress } = useScroll({
+    target: containerRef,
+    // Span the recession across EXACTLY the cover glide. ["end 200vh"] = the
+    // moment the CareerForge plane's edge arrives (its peek sits at 200vh - 88px);
+    // ["end 100vh"] = full occlusion as that plane pins over this one
+    // (occlusion completes at 100vh - 8px, so this clamps just 8px late).
+    // NOTE: framer's offset parser accepts only px/%/vw/vh — no calc().
+    offset: ["end 200vh", "end 100vh"],
+  });
+  const coverScale = useTransform(coverProgress, [0, 1], [1, 0.965]);
+  const coverY = useTransform(coverProgress, [0, 1], [0, -24]);
+  const coverOpacity = useTransform(coverProgress, [0, 1], [1, 0.55]);
+  const useCoverExit = mounted && !prefersReducedMotion;
+  const coverExitStyle = useCoverExit
+    ? { y: coverY, scale: coverScale, opacity: coverOpacity }
+    : undefined;
 
   // Dynamic active stage synchronization driven by vertical page scroll
   useEffect(() => {
     if (!isDesktop) return;
-    const unsubscribe = scrollYProgress.on("change", (latest) => {
+    const unsubscribe = journeyProgress.on("change", (latest) => {
       let idx = 0;
       if (latest < 0.24) {
         idx = 0;
@@ -226,7 +273,7 @@ export default function GovTransparencyRagShowcase({
       setActiveStageIndex(idx);
     });
     return () => unsubscribe();
-  }, [scrollYProgress, isDesktop]);
+  }, [journeyProgress, isDesktop]);
 
   const activeStage = STAGES[activeStageIndex];
   // Displays user-configured photoSrc or the architecture blueprint by default
@@ -275,7 +322,9 @@ export default function GovTransparencyRagShowcase({
         const scrollTravel = containerHeight - windowHeight;
 
         if (scrollTravel > 0) {
-          const stageFractions = [0.06, 0.4, 0.72, 0.97];
+          // Fractions are taken in journey space ([0.04, 0.63] of the pin), so
+          // each click lands exactly on a stage hold before the cover runway.
+          const stageFractions = [0.076, 0.273, 0.458, 0.603];
           const targetScroll = containerTop - 80 + scrollTravel * stageFractions[index];
           window.scrollTo({
             top: Math.max(0, targetScroll),
@@ -365,7 +414,7 @@ export default function GovTransparencyRagShowcase({
     <div
       ref={containerRef}
       id="gov-transparency-rag"
-      className={`relative z-20 w-full mt-16 sm:mt-20 lg:-mt-[calc(100vh-5.5rem)] pt-10 sm:pt-12 lg:pt-0 border-t border-white/[0.08] lg:border-t-0 bg-black lg:min-h-[260vh] ${className}`}
+      className={`relative z-20 w-full mt-16 sm:mt-20 lg:-mt-[calc(100vh-5.5rem)] pt-10 sm:pt-12 lg:pt-0 border-t border-white/[0.08] lg:border-t-0 bg-black lg:min-h-[350vh] ${className}`}
     >
       {/* =====================================================================
           DESKTOP STICKY COVER PLANE
@@ -376,32 +425,31 @@ export default function GovTransparencyRagShowcase({
           - Timing contract: the Merchant OS pin maps its four-stage journey
             into the first ~63% of its progress (cover runway below), so every
             stage completes and the rail rests on 04 before this plane's edge
-            arrives at ~65% — the cover never interrupts a stage hold. This
-            plane itself is the final world (no successor applies over it).
+            arrives at ~65% — the cover never interrupts a stage hold. The
+            CareerForge AI plane covers THIS world under the same contract.
           - Opaque bg + z-20 make the plane read as one solid rising sheet above
             the z-10 Merchant OS sheet; the hairline cap edge slides in as its
             leading edge.
           ===================================================================== */}
-      {/* DESKTOP STICKY PINNED VIEWPORT (final world — no exit recession) */}
-      <div className="relative lg:sticky lg:top-20 lg:h-[calc(100vh-5.5rem)] w-full flex flex-col justify-center py-1.5 lg:py-3">
-        {/* Background Architectural Ambient Radial Lighting */}
+      {/* DESKTOP STICKY PINNED VIEWPORT (world-exit recession applied while the CareerForge AI plane covers this world) */}
+      <motion.div
+        style={coverExitStyle}
+        className="relative lg:sticky lg:top-20 lg:h-[calc(100vh-5.5rem)] w-full flex flex-col justify-center py-1.5 lg:py-3"
+      >        {/* Background Architectural Ambient Radial Lighting */}
         <div className="absolute inset-0 pointer-events-none -z-10 flex items-center justify-center">
           <div className="w-[600px] lg:w-[1000px] h-[350px] lg:h-[500px] rounded-full bg-[radial-gradient(ellipse_at_center,_rgba(139,92,246,0.07)_0%,_rgba(139,92,246,0.01)_50%,_transparent_72%)] blur-3xl" />
         </div>
 
         {/* Project Header: Project Title & Description */}
         <div className="w-full flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-white/[0.08] pb-3 mb-4">
-          <div className="max-w-2xl">
-            <span className="text-xs font-mono text-violet-400 uppercase tracking-widest block mb-1.5 font-medium">
-              Featured Architecture
-            </span>
-            <h3 className="font-syne text-2xl sm:text-3xl lg:text-4xl font-bold text-white tracking-tight">
+          <div className="max-w-3xl">
+            <h3 className="font-syne text-2xl sm:text-3xl lg:text-4xl font-extrabold text-white tracking-[-0.03em] leading-tight">
               Gov-Transparency RAG
             </h3>
-            <p className="mt-1.5 text-sm sm:text-base text-zinc-300 font-sans leading-relaxed">
+            <p className="mt-1.5 text-xs sm:text-sm text-zinc-300 font-sans leading-relaxed">
               From thousands of legal documents to trustworthy answers — a production-grade forensic document RAG pipeline for court records, exhibits and DOJ disclosures.
             </p>
-            <p className="mt-1 text-[11px] font-mono text-zinc-500 tracking-tight">
+            <p className="mt-1 text-[10px] sm:text-[11px] font-mono text-zinc-500 tracking-tight">
               85%+ API Savings &middot; &lt;10ms Cache Hits &middot; ≥0.45 Relevance Floor &middot; 100% Source Lineage
             </p>
           </div>
@@ -411,10 +459,10 @@ export default function GovTransparencyRagShowcase({
             <button
               onClick={toggleScanline}
               onMouseEnter={() => sound.hover()}
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border text-xs font-space font-medium transition-all cursor-pointer ${
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border text-xs font-space font-medium transition-all cursor-pointer backdrop-blur-md active:scale-95 ${
                 isScanlineActive
-                  ? "border-violet-400/50 bg-violet-400/15 text-violet-300 shadow-sm shadow-violet-400/20"
-                  : "border-white/[0.1] bg-white/[0.03] text-zinc-400 hover:text-white"
+                  ? "border-violet-400/50 bg-violet-400/15 text-violet-300 shadow-[0_0_12px_rgba(139,92,246,0.25)]"
+                  : "border-white/[0.1] bg-white/[0.03] text-zinc-400 hover:text-white hover:border-white/[0.2]"
               }`}
               title="Toggle Holographic Scanline"
               aria-label="Toggle Holographic Scanline"
@@ -426,9 +474,9 @@ export default function GovTransparencyRagShowcase({
             <button
               onClick={toggleExploded}
               onMouseEnter={() => sound.hover()}
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border text-xs font-space font-medium transition-all cursor-pointer ${
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border text-xs font-space font-medium transition-all cursor-pointer backdrop-blur-md active:scale-95 ${
                 isExploded
-                  ? "border-violet-400 bg-violet-400 text-black font-bold shadow-md shadow-violet-400/30"
+                  ? "border-violet-400 bg-violet-400 text-black font-bold shadow-[0_0_16px_rgba(139,92,246,0.35)]"
                   : "border-white/[0.1] bg-white/[0.03] text-zinc-400 hover:border-violet-400/50 hover:text-white"
               }`}
               title="Explode 3D depth planes"
@@ -444,7 +492,7 @@ export default function GovTransparencyRagShowcase({
                 setShowInfographicModal(true);
               }}
               onMouseEnter={() => sound.hover()}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-white/[0.1] bg-white/[0.03] text-zinc-300 hover:border-violet-400/50 hover:text-violet-400 text-xs font-space font-medium transition-all cursor-pointer"
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-white/[0.1] bg-white/[0.03] hover:bg-white/[0.06] text-zinc-300 hover:border-violet-400/50 hover:text-violet-400 text-xs font-space font-medium transition-all cursor-pointer backdrop-blur-md active:scale-95"
               title="Inspect Full-Resolution Blueprint"
               aria-label="Inspect Full-Resolution Blueprint"
             >
@@ -599,19 +647,11 @@ export default function GovTransparencyRagShowcase({
                   </div>
                 </div>
 
-                {/* Corner Architectural Crop Brackets */}
-                <div className="absolute top-2 left-2 text-white/30 font-mono text-xs pointer-events-none">
-                  ┌
-                </div>
-                <div className="absolute top-2 right-2 text-white/30 font-mono text-xs pointer-events-none">
-                  ┐
-                </div>
-                <div className="absolute bottom-2 left-2 text-white/30 font-mono text-xs pointer-events-none">
-                  └
-                </div>
-                <div className="absolute bottom-2 right-2 text-white/30 font-mono text-xs pointer-events-none">
-                  ┘
-                </div>
+                {/* Precision Aerospace Corner Brackets */}
+                <div className="absolute top-3 left-3 w-3.5 h-3.5 border-t border-l border-white/40 pointer-events-none" />
+                <div className="absolute top-3 right-3 w-3.5 h-3.5 border-t border-r border-white/40 pointer-events-none" />
+                <div className="absolute bottom-3 left-3 w-3.5 h-3.5 border-b border-l border-white/40 pointer-events-none" />
+                <div className="absolute bottom-3 right-3 w-3.5 h-3.5 border-b border-r border-white/40 pointer-events-none" />
               </div>
             </div>
           </div>
@@ -638,8 +678,8 @@ export default function GovTransparencyRagShowcase({
                       aria-label={`Jump to stage ${stg.index}: ${stg.title}`}
                       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full font-mono text-xs transition-all cursor-pointer ${
                         activeStageIndex === i
-                          ? "text-black font-bold shadow-md scale-105"
-                          : "border border-white/[0.08] bg-white/[0.03] text-zinc-400 hover:text-white hover:border-white/[0.2]"
+                          ? "text-black font-bold shadow-[0_0_16px_rgba(139,92,246,0.4)] scale-105"
+                          : "border border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.06] text-zinc-400 hover:text-white hover:border-white/[0.2]"
                       }`}
                       style={
                         activeStageIndex === i
@@ -665,7 +705,7 @@ export default function GovTransparencyRagShowcase({
                     className={`p-1.5 rounded-full border transition-all cursor-pointer ${
                       activeStageIndex === 0
                         ? "border-white/[0.05] text-zinc-600 cursor-not-allowed"
-                        : "border-white/[0.15] bg-white/[0.04] text-white hover:border-violet-400 hover:text-violet-400"
+                        : "border-white/[0.15] bg-white/[0.04] hover:bg-white/[0.08] text-white hover:border-violet-400 hover:text-violet-400 active:scale-95"
                     }`}
                   >
                     <ChevronLeft className="w-4 h-4" />
@@ -679,7 +719,7 @@ export default function GovTransparencyRagShowcase({
                     className={`p-1.5 rounded-full border transition-all cursor-pointer ${
                       activeStageIndex === STAGES.length - 1
                         ? "border-white/[0.05] text-zinc-600 cursor-not-allowed"
-                        : "border-white/[0.15] bg-white/[0.04] text-white hover:border-violet-400 hover:text-violet-400"
+                        : "border-white/[0.15] bg-white/[0.04] hover:bg-white/[0.08] text-white hover:border-violet-400 hover:text-violet-400 active:scale-95"
                     }`}
                   >
                     <ChevronRight className="w-4 h-4" />
@@ -688,17 +728,22 @@ export default function GovTransparencyRagShowcase({
               </div>
 
               {/* Glowing Horizontal Rail Track Bar */}
-              <div className="relative w-full h-1.5 bg-white/[0.08] rounded-full overflow-hidden">
+              <div className="relative w-full h-1.5 bg-white/[0.06] rounded-full overflow-hidden p-[1px]">
                 <motion.div
                   style={{ width: trackRailWidth }}
                   transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                  className="h-full bg-gradient-to-r from-violet-500 via-violet-400 to-amber-300 rounded-full"
+                  className="h-full bg-gradient-to-r from-violet-500 via-violet-400 to-amber-200 rounded-full shadow-[0_0_8px_rgba(139,92,246,0.5)]"
                 />
               </div>
             </div>
 
             {/* THE HORIZONTAL SLIDING CARD CONTAINER */}
-            <div className="relative w-full overflow-hidden rounded-3xl border border-white/[0.1] bg-[#07070a]/90 backdrop-blur-md shadow-2xl p-4 sm:p-5 min-h-[360px] flex flex-col justify-between">
+            <div className="relative w-full overflow-hidden rounded-3xl border border-white/[0.1] bg-gradient-to-b from-[#0c0c12]/95 via-[#08080c]/95 to-[#050508]/95 backdrop-blur-xl shadow-2xl p-4 sm:p-5 min-h-[360px] flex flex-col justify-between before:absolute before:inset-x-0 before:top-0 before:h-[1px] before:bg-gradient-to-r before:from-transparent before:via-white/20 before:to-transparent before:pointer-events-none">
+              {/* Dynamic Accent Corner Flare */}
+              <div
+                className="absolute -top-16 -right-16 w-40 h-40 rounded-full blur-3xl pointer-events-none transition-colors duration-500"
+                style={{ backgroundColor: `${activeStage.accentColor}18` }}
+              />
               {/* The Translating Strip */}
               <div className="overflow-hidden w-full flex-1 flex flex-col justify-between">
                 <motion.div
@@ -723,17 +768,17 @@ export default function GovTransparencyRagShowcase({
                       >
                         <div>
                           {/* Stage Header Badge & Watermark */}
-                          <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center justify-between mb-1.5 sm:mb-2">
                             <div className="flex items-center gap-2">
                               <span
-                                className="p-1.5 rounded-lg border"
+                                className="p-1 sm:p-1.5 rounded-lg border"
                                 style={{
                                   backgroundColor: `${stage.accentColor}15`,
                                   borderColor: `${stage.accentColor}40`,
                                   color: stage.accentColor,
                                 }}
                               >
-                                <IconComponent className="w-4 h-4" />
+                                <IconComponent className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                               </span>
                               <span
                                 className="font-space text-xs font-bold uppercase tracking-widest"
@@ -743,58 +788,58 @@ export default function GovTransparencyRagShowcase({
                               </span>
                             </div>
 
-                            <span className="font-mono text-3xl sm:text-4xl font-black text-white/[0.08] select-none">
+                            <span className="font-mono text-2xl sm:text-3xl xl:text-4xl font-black bg-gradient-to-b from-white/[0.16] to-white/[0.02] bg-clip-text text-transparent select-none leading-none">
                               {stage.index}
                             </span>
                           </div>
 
-                          <h4 className="font-syne text-xl sm:text-2xl font-bold text-white tracking-tight">
+                          <h4 className="font-syne text-lg sm:text-xl font-bold text-white tracking-tight leading-snug">
                             {stage.subtitle}
                           </h4>
 
-                          <p className="mt-1.5 text-xs sm:text-sm text-zinc-300 font-sans leading-relaxed">
+                          <p className="mt-1.5 text-xs sm:text-[13px] text-zinc-300 font-sans leading-normal sm:leading-relaxed">
                             {stage.description}
                           </p>
 
                           {/* Subsystem Telemetry Metric Callout */}
-                          <div className="mt-3 p-2.5 rounded-xl border border-white/[0.08] bg-white/[0.02] flex items-center justify-between">
-                            <div>
-                              <span className="font-space text-[10px] font-semibold text-zinc-400 uppercase tracking-wider block">
+                          <div className="mt-2.5 p-2 sm:p-2.5 rounded-xl border border-white/[0.08] bg-white/[0.03] backdrop-blur-sm flex items-center justify-between gap-3">
+                            <div className="min-w-0">
+                              <span className="font-space text-[9px] sm:text-[10px] font-semibold text-zinc-400 uppercase tracking-wider block truncate">
                                 {stage.telemetry.metricLabel}
                               </span>
                               <span
-                                className="font-mono text-xs font-bold"
+                                className="font-mono text-xs font-bold truncate block"
                                 style={{ color: stage.accentColor }}
                               >
                                 {stage.telemetry.metricValue}
                               </span>
                             </div>
-                            <span className="font-sans text-[11px] text-zinc-400 text-right">
+                            <span className="font-sans text-[10px] sm:text-[11px] text-zinc-400 text-right shrink-0">
                               {stage.telemetry.subtext}
                             </span>
                           </div>
 
-                          {/* Highlights Bullet List */}
-                          <div className="mt-2.5 space-y-1 font-sans text-xs text-zinc-200">
+                          {/* Highlights Bullet List (2-column responsive layout for 4 items) */}
+                          <div className="mt-2.5 grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-1.5 font-sans text-xs text-zinc-200">
                             {stage.highlights.map((highlight, idx) => (
-                              <div key={idx} className="flex items-start gap-2.5">
+                              <div key={idx} className="flex items-start gap-2">
                                 <CheckCircle2
                                   className="w-3.5 h-3.5 mt-0.5 shrink-0"
                                   style={{ color: stage.accentColor }}
                                 />
-                                <span>{highlight}</span>
+                                <span className="text-[11px] sm:text-xs leading-snug">{highlight}</span>
                               </div>
                             ))}
                           </div>
                         </div>
 
                         {/* Technologies Strip & Stage Action Footer */}
-                        <div className="mt-3.5 pt-3 border-t border-white/[0.06] flex items-center justify-between">
+                        <div className="mt-3 pt-2.5 sm:pt-3 border-t border-white/[0.06] flex items-center justify-between gap-2">
                           <div className="flex flex-wrap gap-1.5">
                             {stage.technologies.slice(0, 4).map((tech) => (
                               <span
                                 key={tech}
-                                className="px-2 py-0.5 rounded bg-white/[0.05] border border-white/[0.08] text-[11px] font-space text-zinc-300"
+                                className="px-2 py-0.5 rounded bg-white/[0.05] border border-white/[0.08] text-[10px] sm:text-[11px] font-space text-zinc-300 hover:border-white/20 hover:text-white transition-colors"
                               >
                                 {tech}
                               </span>
@@ -804,7 +849,7 @@ export default function GovTransparencyRagShowcase({
                           {i < STAGES.length - 1 ? (
                             <button
                               onClick={nextStage}
-                              className="hidden sm:flex items-center gap-1 font-space text-xs text-violet-400 hover:text-violet-300 transition-colors cursor-pointer"
+                              className="hidden sm:flex items-center gap-1 font-space text-xs text-violet-400 hover:text-violet-300 transition-colors cursor-pointer shrink-0"
                             >
                               <span>Next</span>
                               <ChevronRight className="w-3.5 h-3.5" />
@@ -812,7 +857,7 @@ export default function GovTransparencyRagShowcase({
                           ) : (
                             <button
                               onClick={() => selectStage(0)}
-                              className="hidden sm:flex items-center gap-1 font-space text-xs text-zinc-400 hover:text-violet-400 transition-colors cursor-pointer"
+                              className="hidden sm:flex items-center gap-1 font-space text-xs text-zinc-400 hover:text-violet-400 transition-colors cursor-pointer shrink-0"
                             >
                               <span>Restart</span>
                             </button>
@@ -826,77 +871,74 @@ export default function GovTransparencyRagShowcase({
             </div>
           </div>
         </div>
-      </div>
+      </motion.div>
 
       {/* =======================================================================
           FULL-RESOLUTION ARCHITECTURE BLUEPRINT MODAL LIGHTBOX
+          Portal to document.body ensures modal attaches to browser viewport directly
           ======================================================================= */}
-      <AnimatePresence>
-        {showInfographicModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-8 bg-black/90 backdrop-blur-md"
-            onClick={() => setShowInfographicModal(false)}
-          >
+      {mounted && typeof document !== "undefined" && createPortal(
+        <AnimatePresence>
+          {showInfographicModal && (
             <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
-              className="relative w-full max-w-6xl max-h-[92vh] flex flex-col rounded-3xl border border-white/[0.12] bg-[#08080c] shadow-2xl overflow-hidden"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[9999] flex flex-col p-2 sm:p-4 md:p-6 bg-black/95 backdrop-blur-xl"
+              onClick={() => setShowInfographicModal(false)}
             >
-              {/* Modal Header */}
-              <div className="flex items-center justify-between p-4 sm:p-6 border-b border-white/[0.08]">
-                <div className="flex items-center gap-3">
-                  <span className="w-2 h-2 rounded-full bg-violet-400" />
-                  <h3 className="font-syne text-lg sm:text-xl font-bold text-white">
-                    Gov-Transparency RAG // Forensic Document Intelligence
-                  </h3>
+              <motion.div
+                initial={{ scale: 0.96, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.96, opacity: 0 }}
+                onClick={(e) => e.stopPropagation()}
+                className="relative w-full h-full max-w-7xl mx-auto flex flex-col rounded-2xl border border-white/[0.12] bg-[#08080c] shadow-2xl overflow-hidden min-h-0"
+              >
+                {/* Modal Header */}
+                <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 border-b border-white/[0.08] shrink-0">
+                  <div className="flex items-center gap-3">
+                    <span className="w-2 h-2 rounded-full bg-violet-400" />
+                    <h3 className="font-syne text-base sm:text-lg font-bold text-white tracking-tight">
+                      Gov-Transparency RAG
+                    </h3>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <span className="hidden sm:inline-block font-mono text-[10px] text-zinc-500 uppercase tracking-wider px-2 py-0.5 rounded border border-white/[0.08]">
+                      ESC to close
+                    </span>
+                    <button
+                      onClick={() => {
+                        sound.click();
+                        setShowInfographicModal(false);
+                      }}
+                      className="p-1.5 rounded-full hover:bg-white/[0.1] text-zinc-400 hover:text-white transition-colors cursor-pointer"
+                      aria-label="Close modal"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
                 </div>
 
-                <button
-                  onClick={() => {
-                    sound.click();
-                    setShowInfographicModal(false);
-                  }}
-                  className="p-2 rounded-full hover:bg-white/[0.1] text-zinc-400 hover:text-white transition-colors cursor-pointer"
-                  aria-label="Close modal"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              {/* Modal Image Body */}
-              <div className="relative flex-1 min-h-[50vh] sm:min-h-[70vh] w-full p-4 bg-black flex items-center justify-center overflow-auto">
-                <div className="relative w-full h-full aspect-[1672/955]">
-                  <Image
-                    src={activePhoto}
-                    alt="Gov-Transparency RAG Full Forensic Document Pipeline Architecture"
-                    fill
-                    sizes="90vw"
-                    className="object-contain"
-                  />
+                {/* Modal Image Canvas - Unconstrained aspect ratio, 100% object-contain, no cuts */}
+                <div className="relative flex-1 min-h-0 w-full p-2 sm:p-4 md:p-6 flex items-center justify-center bg-black/40">
+                  <div className="relative w-full h-full">
+                    <Image
+                      src={activePhoto}
+                      alt="Gov-Transparency RAG Architecture"
+                      fill
+                      sizes="95vw"
+                      priority
+                      className="object-contain"
+                    />
+                  </div>
                 </div>
-              </div>
-
-              {/* Modal Footer */}
-              <div className="p-4 sm:p-5 border-t border-white/[0.08] flex flex-col sm:flex-row items-center justify-between gap-3 font-mono text-xs text-zinc-400">
-                <div>
-                  Forensic Spine: DOJ Ingestion &rarr; Hybrid Retrieval &rarr; Verified Generation &rarr; Supabase Persistence &rarr; Span Tracing
-                </div>
-                <button
-                  onClick={() => setShowInfographicModal(false)}
-                  className="px-4 py-2 rounded-full bg-violet-400 hover:bg-violet-300 text-black font-space font-bold text-xs tracking-wide cursor-pointer"
-                >
-                  Close Blueprint
-                </button>
-              </div>
+              </motion.div>
             </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </div>
   );
 }

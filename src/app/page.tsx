@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState } from "react";
-import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import HeadTurnHero, { HeadTurnAPI } from "@/components/HeadTurnHero";
 import WaterRippleBackground from "@/components/WaterRippleBackground";
@@ -12,18 +11,17 @@ import AboutQuickFacts from "@/components/AboutQuickFacts";
 import AgenticVideoPipelineShowcase from "@/components/AgenticVideoPipelineShowcase";
 import AgenticMerchantOSShowcase from "@/components/AgenticMerchantOSShowcase";
 import GovTransparencyRagShowcase from "@/components/GovTransparencyRagShowcase";
+import CareerForgeShowcase from "@/components/CareerForgeShowcase";
 import PortfolioScrollEntrance from "@/components/PortfolioScrollEntrance";
+import SkillsMarqueeSection from "@/components/SkillsMarqueeSection";
+import CertificationsSubsection from "@/components/CertificationsSubsection";
 import { motion, useReducedMotion } from "framer-motion";
 import { sound } from "@/components/SoundEffects";
 import {
   ArrowUpRight,
-  Box,
   Check,
   Copy,
   Mail,
-  Sparkles,
-  Database,
-  Zap,
 } from "lucide-react";
 
 export default function Home() {
@@ -229,6 +227,34 @@ export default function Home() {
 
         {/* Portfolio Section with Bidirectional Swipe-Up / Swipe-Down Scroll Motion */}
         <PortfolioScrollEntrance>
+          {/* ===================================================================
+              SUBSECTION 01: PROJECTS (Between Portfolio header & first project)
+              =================================================================== */}
+          <div id="projects" className="pt-2 pb-10 scroll-mt-28">
+            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-6 border-b border-white/[0.08]">
+              <div>
+                <div className="flex items-center gap-2.5 mb-2.5">
+                  <span className="w-2 h-2 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(245,158,11,0.8)] animate-pulse" />
+                  <span className="font-mono text-xs uppercase tracking-[0.25em] text-amber-400 font-semibold">
+                    Subsection 01 &bull; Production Systems
+                  </span>
+                </div>
+                <h3 className="font-space text-3xl sm:text-5xl font-extrabold uppercase tracking-tight text-white leading-none">
+                  Featured Projects
+                </h3>
+              </div>
+
+              <div className="flex items-center gap-2.5 font-mono text-xs text-zinc-400">
+                <span className="px-3.5 py-1.5 rounded-full border border-white/[0.08] bg-white/[0.02]">
+                  4 Production Systems
+                </span>
+                <span className="px-3.5 py-1.5 rounded-full border border-amber-400/20 bg-amber-400/10 text-amber-300">
+                  Interactive 3D Stages
+                </span>
+              </div>
+            </div>
+          </div>
+
           {/* Project 01: Agentic AI Video Pipeline (Visual Centerpiece) */}
           <AgenticVideoPipelineShowcase />
 
@@ -237,218 +263,20 @@ export default function Home() {
 
           {/* Project 03: Gov-Transparency RAG (Forensic Intelligence) */}
           <GovTransparencyRagShowcase />
+
+          {/* Project 04: CareerForge AI (Full-Stack Starting Pillar) */}
+          <CareerForgeShowcase />
+
+          {/* ===================================================================
+              SUBSECTION 02: SKILLS & TECHNICAL CAPABILITIES
+              =================================================================== */}
+          <SkillsMarqueeSection />
+
+          {/* ===================================================================
+              SUBSECTION 03: CERTIFICATIONS & VERIFIED CREDENTIALS
+              =================================================================== */}
+          <CertificationsSubsection />
         </PortfolioScrollEntrance>
-
-        {/* =========================================================================
-            SECTION: EXPERIENCE & CORE STACK
-            ========================================================================= */}
-        <div id="experience" className="pt-16 border-t border-white/[0.08] scroll-mt-24">
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-10">
-            <div>
-              <span className="font-mono text-xs text-amber-400 uppercase tracking-wider block mb-1 font-medium">
-                Production Background
-              </span>
-              <h3 className="font-syne text-2xl sm:text-3xl font-bold text-white tracking-tight">
-                Experience &amp; Stack
-              </h3>
-            </div>
-            <p className="mt-3 sm:mt-0 font-space text-xs text-zinc-400">
-              Autonomous agent architectures, distributed Python backends, and spatial systems.
-            </p>
-          </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="p-7 rounded-2xl border border-white/[0.08] bg-[#08080b] hover:border-amber-400/40 transition-colors">
-            <h3 className="font-space text-lg font-bold text-white mb-4 flex items-center gap-2">
-              <Zap className="w-4 h-4 text-amber-400" />
-              Agentic AI & Swarms
-            </h3>
-            <ul className="space-y-3 font-mono text-xs text-zinc-400">
-              <li className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-                LangGraph State Machines
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-                Deterministic Tool Execution
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-                Multi-Agent Swarm Coordination
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-                Semantic Chunking & Reranking
-              </li>
-            </ul>
-          </div>
-
-          <div className="p-7 rounded-2xl border border-white/[0.08] bg-[#08080b] hover:border-amber-400/40 transition-colors">
-            <h3 className="font-space text-lg font-bold text-white mb-4 flex items-center gap-2">
-              <Database className="w-4 h-4 text-amber-400" />
-              Backend & Concurrency
-            </h3>
-            <ul className="space-y-3 font-mono text-xs text-zinc-400">
-              <li className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-                Python (FastAPI, AsyncIO)
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-                PostgreSQL & Redis Streams
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-                Distributed Vector Databases
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-                WebSocket Token Streaming
-              </li>
-            </ul>
-          </div>
-
-          <div className="p-7 rounded-2xl border border-white/[0.08] bg-[#08080b] hover:border-cyan-400/40 transition-colors">
-            <h3 className="font-space text-lg font-bold text-white mb-4 flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-cyan-400" />
-              Spatial & Creative Tech
-            </h3>
-            <ul className="space-y-3 font-mono text-xs text-zinc-400">
-              <li className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
-                Next.js 16 (App Router)
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
-                Three.js & WebGL Shaders
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
-                Head-Tracking Frame Streaming
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
-                Procedural Web Audio API
-              </li>
-            </ul>
-          </div>
-        </div>
-      </div>
-      </section>
-
-      {/* =========================================================================
-          SECTION: FEATURED ARCHITECTURES & SYSTEMS
-          ========================================================================= */}
-      <section id="architectures" className="relative z-10 py-28 px-6 sm:px-12 max-w-7xl mx-auto border-t border-white/[0.08]">
-        <div className="flex items-center justify-between mb-12">
-          <div>
-            <div className="flex items-center gap-3 font-space text-xs font-bold text-amber-400 uppercase tracking-widest mb-3">
-              <span className="w-6 h-[2px] bg-amber-400" />
-              <span>Architectures</span>
-            </div>
-            <h2 className="font-syne text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
-              FEATURED ARCHITECTURES
-            </h2>
-          </div>
-
-          <Link
-            href="/viewer"
-            onClick={() => sound.click()}
-            onMouseEnter={() => sound.hover()}
-            className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-full border border-cyan-500/30 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 font-space text-xs font-medium transition-all"
-          >
-            <Box className="w-3.5 h-3.5" />
-            <span>Open 3D Mesh Inspector</span>
-          </Link>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Project 1 */}
-          <div className="group p-8 rounded-3xl border border-white/[0.08] bg-[#07070a] hover:border-amber-400/40 transition-all">
-            <div className="flex items-center justify-between mb-4">
-              <span className="font-mono text-[11px] text-amber-400 px-3 py-1 rounded-full bg-amber-400/10 border border-amber-400/20">
-                MULTI-AGENT SWARM
-              </span>
-              <span className="font-mono text-xs text-zinc-500">01 / 04</span>
-            </div>
-            <h3 className="font-syne text-2xl font-bold text-white group-hover:text-amber-300 transition-colors">
-              NexusAgent // Autonomous Reasoning Mesh
-            </h3>
-            <p className="mt-3 text-sm text-zinc-400 leading-relaxed font-sans">
-              Hierarchical multi-agent system utilizing LangGraph and custom state machines. Features deterministic tool-calling validation, rollback checkpoints, and sandboxed Python code interpreters.
-            </p>
-            <div className="mt-6 flex flex-wrap gap-2 font-mono text-[11px] text-zinc-400">
-              <span className="px-2.5 py-1 rounded-md bg-white/[0.04]">LangGraph</span>
-              <span className="px-2.5 py-1 rounded-md bg-white/[0.04]">FastAPI</span>
-              <span className="px-2.5 py-1 rounded-md bg-white/[0.04]">Redis Pub/Sub</span>
-              <span className="px-2.5 py-1 rounded-md bg-white/[0.04]">Docker</span>
-            </div>
-          </div>
-
-          {/* Project 2 */}
-          <div className="group p-8 rounded-3xl border border-white/[0.08] bg-[#07070a] hover:border-amber-400/40 transition-all">
-            <div className="flex items-center justify-between mb-4">
-              <span className="font-mono text-[11px] text-amber-400 px-3 py-1 rounded-full bg-amber-400/10 border border-amber-400/20">
-                RETRIEVAL ENGINE
-              </span>
-              <span className="font-mono text-xs text-zinc-500">02 / 04</span>
-            </div>
-            <h3 className="font-syne text-2xl font-bold text-white group-hover:text-amber-300 transition-colors">
-              AuraRAG // Grounded Deterministic Search
-            </h3>
-            <p className="mt-3 text-sm text-zinc-400 leading-relaxed font-sans">
-              High-precision hybrid retrieval architecture combining dense vectors and sparse BM25 indexing with cross-encoder re-ranking. Eliminates hallucinations with strict semantic boundary gates.
-            </p>
-            <div className="mt-6 flex flex-wrap gap-2 font-mono text-[11px] text-zinc-400">
-              <span className="px-2.5 py-1 rounded-md bg-white/[0.04]">Qdrant / Milvus</span>
-              <span className="px-2.5 py-1 rounded-md bg-white/[0.04]">ColBERT</span>
-              <span className="px-2.5 py-1 rounded-md bg-white/[0.04]">Hybrid BM25</span>
-              <span className="px-2.5 py-1 rounded-md bg-white/[0.04]">Python 3.12</span>
-            </div>
-          </div>
-
-          {/* Project 3 */}
-          <div className="group p-8 rounded-3xl border border-white/[0.08] bg-[#07070a] hover:border-amber-400/40 transition-all">
-            <div className="flex items-center justify-between mb-4">
-              <span className="font-mono text-[11px] text-amber-400 px-3 py-1 rounded-full bg-amber-400/10 border border-amber-400/20">
-                STREAMING BACKEND
-              </span>
-              <span className="font-mono text-xs text-zinc-500">03 / 04</span>
-            </div>
-            <h3 className="font-syne text-2xl font-bold text-white group-hover:text-amber-300 transition-colors">
-              NeuroStream // Distributed Event Pipeline
-            </h3>
-            <p className="mt-3 text-sm text-zinc-400 leading-relaxed font-sans">
-              Real-time WebSocket token streaming pipeline handling concurrent multi-tenant LLM responses. Delivers chunked token diffs with zero backpressure and automated client reconnections.
-            </p>
-            <div className="mt-6 flex flex-wrap gap-2 font-mono text-[11px] text-zinc-400">
-              <span className="px-2.5 py-1 rounded-md bg-white/[0.04]">WebSockets</span>
-              <span className="px-2.5 py-1 rounded-md bg-white/[0.04]">AsyncIO</span>
-              <span className="px-2.5 py-1 rounded-md bg-white/[0.04]">Redis Cluster</span>
-            </div>
-          </div>
-
-          {/* Project 4 */}
-          <div className="group p-8 rounded-3xl border border-white/[0.08] bg-[#07070a] hover:border-cyan-400/40 transition-all">
-            <div className="flex items-center justify-between mb-4">
-              <span className="font-mono text-[11px] text-cyan-400 px-3 py-1 rounded-full bg-cyan-400/10 border border-cyan-400/20">
-                SPATIAL ENGINEERING
-              </span>
-              <span className="font-mono text-xs text-zinc-500">04 / 04</span>
-            </div>
-            <h3 className="font-syne text-2xl font-bold text-white group-hover:text-cyan-300 transition-colors">
-              HeadTurn & SpatialAvatar // WebGL Rig
-            </h3>
-            <p className="mt-3 text-sm text-zinc-400 leading-relaxed font-sans">
-              Ultra-lightweight multi-tier avatar streaming system rendering smooth 60 FPS head-tracking, smiling, and pitch transitions in pure AVIF/WebP sequences with zero layout shift.
-            </p>
-            <div className="mt-6 flex flex-wrap gap-2 font-mono text-[11px] text-zinc-400">
-              <span className="px-2.5 py-1 rounded-md bg-white/[0.04]">Next.js 16</span>
-              <span className="px-2.5 py-1 rounded-md bg-white/[0.04]">Three.js</span>
-              <span className="px-2.5 py-1 rounded-md bg-white/[0.04]">Web Audio API</span>
-            </div>
-          </div>
-        </div>
       </section>
 
       {/* =========================================================================
